@@ -9,6 +9,8 @@ export type Place = {
   id: string
   title: string
   subtitle: string
+  lat: number
+  lng: number
   distanceKm?: number
 }
 
@@ -52,6 +54,7 @@ export type RouteVariant = {
   id: string
   title: string
   stops: RouteStop[]
+  geometry?: LatLng[]
   totalKm: number
   totalMinutes: number
   interestLabels: string[]
@@ -60,13 +63,34 @@ export type RouteVariant = {
 /** Снимок параметров генерации (для сохранения и отладки). */
 export type GenerationParams = {
   originTitle: string
+  originLat: number | null
+  originLng: number | null
   destinationTitle: string
+  destinationLat: number | null
+  destinationLng: number | null
   circular: boolean
   transport: Transport
   durationUnit: DurationUnit | null
   durationHours: number | null
   durationKm: number | null
   interests: string[]
+}
+
+/** POI для генерации маршрута (seed и OSM-импорт). */
+export type RoutePlace = {
+  id: string
+  name: string
+  type: string
+  lat: number
+  lng: number
+  interests: string[]
+  description: string
+  source?: 'seed' | 'osm'
+}
+
+export type LatLng = {
+  lat: number
+  lng: number
 }
 
 /** Результат генерации: минимум 3 варианта в v1. */

@@ -1,6 +1,7 @@
 import { Box, Flex, Text } from '@chakra-ui/react'
 import { ChevronLeft, ChevronRight } from '@/components/icons'
 import { formatPlacesCount, formatTripMinutes } from '@/lib/format'
+import { routePlacesCount } from '@/lib/routing/routeStops'
 import type { RouteVariant } from '@/types'
 
 const CAROUSEL_TRANSITION = 'transform 280ms cubic-bezier(0.4, 0, 0.2, 1)'
@@ -28,6 +29,8 @@ function VariantCard({
   variant: RouteVariant
   onClick: () => void
 }) {
+  const placesCount = routePlacesCount(variant.stops)
+
   return (
     <Flex
       as="button"
@@ -68,7 +71,7 @@ function VariantCard({
           </Text>
           <MetricDot />
           <Text fontSize="xs" fontWeight="medium" lineHeight="xs" color="muted" whiteSpace="nowrap" truncate>
-            {formatPlacesCount(variant.stops.length)}
+            {formatPlacesCount(placesCount)}
           </Text>
         </Flex>
       </Flex>

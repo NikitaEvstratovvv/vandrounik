@@ -4,7 +4,8 @@ import { Flex, Text } from '@chakra-ui/react'
 import { Screen } from '@/components/Screen'
 import { Header } from '@/components/Header'
 import { EmblemLoader } from '@/components/EmblemLoader'
-import { generateMockRoutes } from '@/lib/routing/generateMockRoutes'
+import { PrimaryButton } from '@/components/PrimaryButton'
+import { generateRoutes } from '@/lib/routing/generateRoutes'
 import { saveGeneration } from '@/lib/storage/generation'
 import { useWizard } from '@/store/wizard-context'
 
@@ -16,7 +17,8 @@ export function Loading() {
   const navigate = useNavigate()
   const { state, canGenerate } = useWizard()
   const [textIndex, setTextIndex] = useState(0)
-  const startedRef = useRef(false)
+  const [error, setError] = useState<string | null>(null)
+  const requestIdRef = useRef(0)
 
   useEffect(() => {
     if (!canGenerate) {
@@ -32,23 +34,38 @@ export function Loading() {
   }, [])
 
   useEffect(() => {
-    if (!canGenerate || startedRef.current) return
-    startedRef.current = true
+    if (!canGenerate) return
+    setError(null)
 
     const startedAt = Date.now()
+    const requestId = requestIdRef.current + 1
+    requestIdRef.current = requestId
 
     const run = async () => {
-      const result = generateMockRoutes(state)
-      const elapsed = Date.now() - startedAt
-      const remaining = Math.max(0, MIN_LOADING_MS - elapsed)
-      if (remaining > 0) {
-        await new Promise((resolve) => setTimeout(resolve, remaining))
+      try {
+        const result = await generateRoutes(state)
+        const elapsed = Date.now() - startedAt
+        const remaining = Math.max(0, MIN_LOADING_MS - elapsed)
+        if (remaining > 0) {
+          await new Promise((resolve) => setTimeout(resolve, remaining))
+        }
+        if (requestId !== requestIdRef.current) return
+        saveGeneration(result)
+        navigate('/plan/results', { replace: true })
+      } catch {
+        if (requestId === requestIdRef.current) {
+          setError('Не удалось построить маршрут. Попробуйте выбрать другие точки или повторить позже.')
+        }
       }
-      saveGeneration(result)
-      navigate('/plan/results', { replace: true })
     }
 
     void run()
+
+    return () => {
+      if (requestId === requestIdRef.current) {
+        requestIdRef.current++
+      }
+    }
   }, [canGenerate, navigate, state])
 
   return (
@@ -56,23 +73,33 @@ export function Loading() {
       <Header variant="main" />
 
       <Flex direction="column" flex="1" minH="0" align="center" justify="center" gap="16px" px="16px" pb="16px">
-        <EmblemLoader size={64} />
-        <Text
-          key={textIndex}
-          w="328px"
-          maxW="full"
-          fontSize="sm"
-          fontWeight="normal"
-          lineHeight="sm"
-          color="primary"
-          textAlign="center"
-          css={{
-            animation: 'vandr-fade-in 300ms ease-out',
-            '@keyframes vandr-fade-in': { from: { opacity: 0 }, to: { opacity: 1 } },
-          }}
-        >
-          {LOADER_TEXTS[textIndex]}
-        </Text>
+        {error ? (
+          <>
+            <Text w="full" fontSize="sm" lineHeight="sm" color="primary" textAlign="center">
+              {error}
+            </Text>
+            <PrimaryButton onClick={() => navigate('/plan', { replace: true })}>Вернуться</PrimaryButton>
+          </>
+        ) : (
+          <>
+            <EmblemLoader size={64} />
+            <Text
+              key={textIndex}
+              w="full"
+              fontSize="sm"
+              fontWeight="normal"
+              lineHeight="sm"
+              color="primary"
+              textAlign="center"
+              css={{
+                animation: 'vandr-fade-in 300ms ease-out',
+                '@keyframes vandr-fade-in': { from: { opacity: 0 }, to: { opacity: 1 } },
+              }}
+            >
+              {LOADER_TEXTS[textIndex]}
+            </Text>
+          </>
+        )}
       </Flex>
     </Screen>
   )

@@ -21,7 +21,8 @@ import {
   worldToLatLng,
   zoomAtPoint,
 } from '@/lib/map/projection'
-import type { RouteStop } from '@/types'
+import { routeStopLabel } from '@/lib/routing/routeStops'
+import type { LatLng, RouteStop } from '@/types'
 
 const ROUTE_COLOR = '#2D6A4F'
 const ZOOM_ANIM_MS = 280
@@ -30,6 +31,7 @@ const WHEEL_ZOOM_SENSITIVITY = 0.0022
 
 type InteractiveRouteMapProps = {
   stops: RouteStop[]
+  geometry?: LatLng[]
   onStopClick?: (stop: RouteStop) => void
   selectedStopId?: string | null
 }
@@ -71,7 +73,7 @@ function easeOutCubic(t: number): number {
 }
 
 export const InteractiveRouteMap = forwardRef<InteractiveRouteMapRef, InteractiveRouteMapProps>(
-  function InteractiveRouteMap({ stops, onStopClick, selectedStopId }, ref) {
+  function InteractiveRouteMap({ stops, geometry, onStopClick, selectedStopId }, ref) {
     const containerRef = useRef<HTMLDivElement>(null)
     const dragRef = useRef<DragState | null>(null)
     const pointersRef = useRef(new Map<number, { x: number; y: number }>())
@@ -248,17 +250,18 @@ export const InteractiveRouteMap = forwardRef<InteractiveRouteMapRef, Interactiv
     )
 
     const routePoints = useMemo(() => {
-      if (stops.length === 0) return ''
-      const coords = stops.map((stop) => {
-        const p = latLngToPixel(stop.lat, stop.lng, center, tileZoom, size.width, size.height)
+      const line = geometry && geometry.length > 0 ? geometry : stops
+      if (line.length === 0) return ''
+      const coords = line.map((point) => {
+        const p = latLngToPixel(point.lat, point.lng, center, tileZoom, size.width, size.height)
         return `${p.x},${p.y}`
       })
-      if (stops.length > 1) {
+      if (!geometry && stops.length > 1) {
         const first = latLngToPixel(stops[0].lat, stops[0].lng, center, tileZoom, size.width, size.height)
         coords.push(`${first.x},${first.y}`)
       }
       return coords.join(' ')
-    }, [stops, center, tileZoom, size.width, size.height])
+    }, [geometry, stops, center, tileZoom, size.width, size.height])
 
     const handlePointerDown = useCallback(
       (e: React.PointerEvent<HTMLDivElement>) => {
@@ -457,7 +460,7 @@ export const InteractiveRouteMap = forwardRef<InteractiveRouteMapRef, Interactiv
                   outlineColor="primary"
                   outlineOffset="2px"
                 >
-                  {stop.order}
+                  {routeStopLabel(stop)}
                 </Box>
               </Box>
             )

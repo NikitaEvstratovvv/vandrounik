@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useReducer } from 'react'
 import type { ReactNode } from 'react'
+import { completeDurationForTransport } from '@/lib/transport/speed'
 import type { Duration, Place, Transport, WizardState } from '@/types'
 import { WizardContext, type WizardContextValue } from '@/store/wizard-context'
 
@@ -21,11 +22,16 @@ type Action =
   | { type: 'setInterests'; interests: string[] }
   | { type: 'setDuration'; duration: Duration }
   | { type: 'reset' }
+  | { type: 'applyPreset'; preset: Partial<WizardState> }
 
 function reducer(state: WizardState, action: Action): WizardState {
   switch (action.type) {
     case 'setTransport':
-      return { ...state, transport: action.transport }
+      return {
+        ...state,
+        transport: action.transport,
+        duration: state.duration ? completeDurationForTransport(state.duration, action.transport) : null,
+      }
     case 'setOrigin':
       return { ...state, origin: action.place }
     case 'setDestination':
@@ -38,6 +44,8 @@ function reducer(state: WizardState, action: Action): WizardState {
       return { ...state, duration: action.duration }
     case 'reset':
       return initialState
+    case 'applyPreset':
+      return { ...state, ...action.preset }
     default:
       return state
   }
@@ -64,6 +72,28 @@ function migrateDuration(raw: unknown): Duration | null {
   return null
 }
 
+function migratePlace(raw: unknown): Place | null {
+  if (!raw || typeof raw !== 'object') return null
+  const place = raw as Partial<Place>
+  if (
+    typeof place.id !== 'string' ||
+    typeof place.title !== 'string' ||
+    typeof place.subtitle !== 'string' ||
+    typeof place.lat !== 'number' ||
+    typeof place.lng !== 'number'
+  ) {
+    return null
+  }
+  return {
+    id: place.id,
+    title: place.title,
+    subtitle: place.subtitle,
+    lat: place.lat,
+    lng: place.lng,
+    distanceKm: place.distanceKm,
+  }
+}
+
 function loadState(): WizardState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -72,6 +102,8 @@ function loadState(): WizardState {
     return {
       ...initialState,
       ...parsed,
+      origin: migratePlace(parsed.origin),
+      destination: migratePlace(parsed.destination),
       duration: migrateDuration(parsed.duration),
     }
   } catch {
@@ -92,6 +124,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<WizardContextValue>(() => {
     const hasOrigin = state.origin !== null
+    const hasDestination = state.destination !== null
     const hasInterests = state.interests.length > 0
     return {
       state,
@@ -102,7 +135,8 @@ export function WizardProvider({ children }: { children: ReactNode }) {
       setInterests: (interests) => dispatch({ type: 'setInterests', interests }),
       setDuration: (duration) => dispatch({ type: 'setDuration', duration }),
       reset: () => dispatch({ type: 'reset' }),
-      canGenerate: hasOrigin && hasInterests,
+      applyPreset: (preset) => dispatch({ type: 'applyPreset', preset }),
+      canGenerate: hasOrigin && hasDestination && hasInterests,
     }
   }, [state])
 

@@ -1,5 +1,6 @@
 import { Flex, Text } from '@chakra-ui/react'
 import { formatDriveMinutes } from '@/lib/format'
+import { routeStopLabel } from '@/lib/routing/routeStops'
 import type { RouteStop } from '@/types'
 
 type StopRowProps = {
@@ -17,9 +18,11 @@ export function StopRow({ stop }: StopRowProps) {
         justifyContent="center"
         bg="secondary"
         borderRadius="12px"
+        px="6px"
+        minW="28px"
       >
         <Text fontSize="xs" fontWeight="semibold" color="primary" lineHeight="1">
-          {stop.order}
+          {routeStopLabel(stop)}
         </Text>
       </Flex>
 

@@ -1,6 +1,7 @@
 import { chakra, Flex, Text } from '@chakra-ui/react'
 import { CheckIcon } from '@/components/icons'
 import { formatDriveMinutes } from '@/lib/format'
+import { routeStopLabel } from '@/lib/routing/routeStops'
 import type { RouteStop } from '@/types'
 
 type RouteDetailStopRowProps = {
@@ -8,7 +9,7 @@ type RouteDetailStopRowProps = {
   selected?: boolean
   visited?: boolean
   onSelect?: () => void
-  onToggleVisited: () => void
+  onToggleVisited?: () => void
 }
 
 /** Строка остановки на E3: название, время в пути, отметка «Был здесь». */
@@ -48,7 +49,9 @@ export function RouteDetailStopRow({
       _hover={onSelect ? { bg: selected ? 'secondary' : 'rgba(245,245,245,0.85)' } : undefined}
     >
       <Flex
-        boxSize="28px"
+        minW="28px"
+        h="28px"
+        px="6px"
         flexShrink={0}
         align="center"
         justifyContent="center"
@@ -58,7 +61,7 @@ export function RouteDetailStopRow({
         transition="background 150ms, color 150ms"
       >
         <Text fontSize="xs" fontWeight="semibold" lineHeight="1">
-          {stop.order}
+          {routeStopLabel(stop)}
         </Text>
       </Flex>
 
@@ -72,7 +75,7 @@ export function RouteDetailStopRow({
         </Text>
       </Flex>
 
-      <VisitedToggle visited={visited} onToggle={onToggleVisited} />
+      {onToggleVisited ? <VisitedToggle visited={visited} onToggle={onToggleVisited} /> : null}
     </Flex>
   )
 }

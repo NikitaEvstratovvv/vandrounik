@@ -10,6 +10,8 @@ export type WizardContextValue = {
   setInterests: (interests: string[]) => void
   setDuration: (duration: Duration) => void
   reset: () => void
+  /** Атомарно применить пресет (например, демо-маршрут). */
+  applyPreset: (preset: Partial<WizardState>) => void
   /** Можно ли запускать генерацию (CTA enabled). */
   canGenerate: boolean
 }

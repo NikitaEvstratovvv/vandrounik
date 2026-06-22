@@ -7,6 +7,7 @@ import { MapZoomControls } from '@/components/MapZoomControls'
 import { PrimaryButton } from '@/components/PrimaryButton'
 import { RouteDetailStopRow } from '@/components/RouteDetailStopRow'
 import { formatRouteSummarySm } from '@/lib/format'
+import { isRoutePlaceStop, routePlaceStops } from '@/lib/routing/routeStops'
 import { loadGeneration } from '@/lib/storage/generation'
 import { loadVisitedPlaceIds, toggleVisitedPlace } from '@/lib/storage/visited'
 
@@ -68,14 +69,22 @@ export function RouteDetailPanel({ onClose }: RouteDetailPanelProps) {
     return null
   }
 
-  const visitedOnRoute = variant.stops.filter((s) => visitedIds.has(s.placeId)).length
+  const routePlaces = routePlaceStops(variant.stops)
+  const visitedOnRoute = routePlaces.filter((s) => visitedIds.has(s.placeId)).length
 
   return (
     <Flex direction="column" h="full" minH="0">
       <Header variant="back" title={variant.title} onBack={onClose} />
 
       <Flex direction="column" flex="1" minH="0">
-        <Box px="16px" flex="0 0 35%" minH="200px" maxH="280px" pb="12px" flexShrink={0}>
+        <Box
+          px="16px"
+          flex={{ base: '0 0 35%', md: '0 0 45%' }}
+          minH={{ base: '200px', md: '280px' }}
+          maxH={{ base: '280px', md: '420px' }}
+          pb="12px"
+          flexShrink={0}
+        >
           <Box
             position="relative"
             h="full"
@@ -88,6 +97,7 @@ export function RouteDetailPanel({ onClose }: RouteDetailPanelProps) {
             <InteractiveRouteMap
               ref={mapRef}
               stops={variant.stops}
+              geometry={variant.geometry}
               selectedStopId={selectedStopId}
               onStopClick={(stop) => handleStopSelect(stop.placeId)}
             />
@@ -100,11 +110,11 @@ export function RouteDetailPanel({ onClose }: RouteDetailPanelProps) {
 
         <Box px="16px" pb="12px" flexShrink={0}>
           <Text fontSize="sm" fontWeight="medium" lineHeight="sm" color="muted">
-            {formatRouteSummarySm(variant.totalKm, variant.totalMinutes, variant.stops.length)}
+            {formatRouteSummarySm(variant.totalKm, variant.totalMinutes, routePlaces.length)}
           </Text>
           {visitedOnRoute > 0 ? (
             <Text fontSize="xs" lineHeight="xs" color="muted" mt="4px">
-              Отмечено: {visitedOnRoute} из {variant.stops.length}
+              Отмечено: {visitedOnRoute} из {routePlaces.length}
             </Text>
           ) : null}
         </Box>
@@ -129,7 +139,7 @@ export function RouteDetailPanel({ onClose }: RouteDetailPanelProps) {
                   selected={selectedStopId === stop.placeId}
                   visited={visitedIds.has(stop.placeId)}
                   onSelect={() => handleStopSelect(stop.placeId)}
-                  onToggleVisited={() => handleToggleVisited(stop.placeId)}
+                  onToggleVisited={isRoutePlaceStop(stop) ? () => handleToggleVisited(stop.placeId) : undefined}
                 />
               </Box>
             ))}

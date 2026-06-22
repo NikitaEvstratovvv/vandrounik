@@ -135,10 +135,10 @@ export function zoomAtPoint(
   const dy = pixel.y - size.height / 2
   const focusWorldX = centerWorld.x + dx
   const focusWorldY = centerWorld.y + dy
-  const scale = 2 ** (currentZoom - z)
+  const scale = 2 ** (z - currentZoom)
   const newCenterWorld = {
-    x: focusWorldX - dx * scale,
-    y: focusWorldY - dy * scale,
+    x: focusWorldX * scale - dx,
+    y: focusWorldY * scale - dy,
   }
   return worldToLatLng(newCenterWorld.x, newCenterWorld.y, z)
 }

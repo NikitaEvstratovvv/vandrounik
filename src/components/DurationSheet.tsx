@@ -6,6 +6,7 @@ import { PrimaryButton } from '@/components/PrimaryButton'
 import { SquareButton } from '@/components/SquareButton'
 import { CloseCircleIcon, CloseIcon } from '@/components/icons'
 import { useWizard } from '@/store/wizard-context'
+import { completeDurationForTransport } from '@/lib/transport/speed'
 import type { DurationUnit } from '@/types'
 
 type DurationSheetProps = {
@@ -47,11 +48,16 @@ export function DurationSheet({ open, onClose }: DurationSheetProps) {
 
   const apply = () => {
     if (!valid) return
-    setDuration({
-      unit,
-      hours: parseDurationInput(hoursValue),
-      km: parseDurationInput(kmValue),
-    })
+    setDuration(
+      completeDurationForTransport(
+        {
+          unit,
+          hours: parseDurationInput(hoursValue),
+          km: parseDurationInput(kmValue),
+        },
+        state.transport,
+      ),
+    )
     onClose()
   }
 

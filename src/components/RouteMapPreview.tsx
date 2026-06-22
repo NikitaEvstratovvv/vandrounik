@@ -1,16 +1,18 @@
 import { Box } from '@chakra-ui/react'
-import type { RouteStop } from '@/types'
+import type { LatLng, RouteStop } from '@/types'
 
 /** Цвет линии маршрута — brand.primary из design-tokens.md */
 const ROUTE_LINE_COLOR = '#2D6A4F'
 
 type RouteMapPreviewProps = {
   stops: RouteStop[]
+  geometry?: LatLng[]
 }
 
 /** Мини-карта 16:9 с линией маршрута (E2 route card). */
-export function RouteMapPreview({ stops }: RouteMapPreviewProps) {
-  const points = stops.map((s) => ({ x: s.lng, y: s.lat }))
+export function RouteMapPreview({ stops, geometry }: RouteMapPreviewProps) {
+  const line = geometry && geometry.length > 0 ? geometry : stops
+  const points = line.map((s) => ({ x: s.lng, y: s.lat }))
   const all = points.length > 0 ? points : [{ x: 27.5, y: 53.9 }]
 
   const minX = Math.min(...all.map((p) => p.x))

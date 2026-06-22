@@ -8,7 +8,7 @@ import { useWizard } from '@/store/wizard-context'
 import { formatDistance } from '@/lib/format'
 import type { Place } from '@/types'
 
-type SearchState = 'empty' | 'loading' | 'results' | 'nothing'
+type SearchState = 'empty' | 'loading' | 'results' | 'nothing' | 'error'
 
 type LocationPanelProps = {
   point: 'origin' | 'destination'
@@ -19,7 +19,7 @@ type LocationPanelProps = {
 
 /** S1 — Выбор направления (поиск «Откуда» / «Куда»). 1:1 с Figma (node 138:330 / 142:545). */
 export function LocationPanel({ point, onClose, focusSeq = 0 }: LocationPanelProps) {
-  const { setOrigin, setDestination } = useWizard()
+  const { state, setOrigin, setDestination } = useWizard()
 
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<SearchState>('empty')
@@ -56,10 +56,17 @@ export function LocationPanel({ point, onClose, focusSeq = 0 }: LocationPanelPro
     setStatus('loading')
     const current = ++reqId.current
     debounce.current = setTimeout(async () => {
-      const found = await searchPlaces(q)
-      if (current !== reqId.current) return
-      setResults(found)
-      setStatus(found.length > 0 ? 'results' : 'nothing')
+      try {
+        const near = point === 'destination' && state.origin ? state.origin : undefined
+        const found = await searchPlaces(q, { near })
+        if (current !== reqId.current) return
+        setResults(found)
+        setStatus(found.length > 0 ? 'results' : 'nothing')
+      } catch {
+        if (current !== reqId.current) return
+        setResults([])
+        setStatus('error')
+      }
     }, 300)
   }
 
@@ -129,11 +136,12 @@ export function LocationPanel({ point, onClose, focusSeq = 0 }: LocationPanelPro
       </Box>
 
       <Flex flex="1" minH="0" direction="column" px="16px" overflow="hidden">
-        {(status === 'empty' || status === 'nothing' || status === 'loading') && (
+        {(status === 'empty' || status === 'nothing' || status === 'loading' || status === 'error') && (
           <Flex flex="1" direction="column" align="center" justify="center" gap="16px">
             {status === 'empty' && <EmptyState text={emptyText} variant="empty" />}
             {status === 'nothing' && <EmptyState text="Ничего не найдено" variant="nothing" />}
             {status === 'loading' && <EmblemLoader size={64} />}
+            {status === 'error' && <EmptyState text="Не удалось выполнить поиск. Проверьте интернет и попробуйте ещё раз" variant="nothing" />}
           </Flex>
         )}
         {status === 'results' && (

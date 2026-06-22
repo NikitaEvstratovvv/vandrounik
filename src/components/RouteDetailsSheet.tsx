@@ -5,6 +5,7 @@ import { PrimaryButton } from '@/components/PrimaryButton'
 import { SquareButton } from '@/components/SquareButton'
 import { StopRow } from '@/components/StopRow'
 import { formatPlacesCount, formatTripMinutes } from '@/lib/format'
+import { routePlacesCount } from '@/lib/routing/routeStops'
 import type { RouteVariant } from '@/types'
 
 const DURATION_MS = 280
@@ -32,6 +33,7 @@ export function RouteDetailsSheet({ open, variant, onClose, onExited, onSelect }
   const [visible, setVisible] = useState(false)
   const [motionReady, setMotionReady] = useState(false)
   const onExitedRef = useRef(onExited)
+  const placesCount = routePlacesCount(variant.stops)
 
   useEffect(() => {
     onExitedRef.current = onExited
@@ -63,10 +65,11 @@ export function RouteDetailsSheet({ open, variant, onClose, onExited, onSelect }
   return (
     <Box
       position="absolute"
-      left="8px"
-      right="8px"
+      left="50%"
       bottom="8px"
       zIndex={10}
+      w="calc(100% - 16px)"
+      maxW="720px"
       maxH="calc(100% - 96px)"
       bg="background"
       borderRadius="28px"
@@ -76,7 +79,11 @@ export function RouteDetailsSheet({ open, variant, onClose, onExited, onSelect }
       display="flex"
       flexDirection="column"
       boxShadow={visible ? 'lg' : 'none'}
-      transform={visible ? 'translate3d(0, 0, 0)' : 'translate3d(0, calc(100% + 8px), 0)'}
+      transform={
+        visible
+          ? 'translate3d(-50%, 0, 0)'
+          : 'translate3d(-50%, calc(100% + 8px), 0)'
+      }
       transition={motionReady ? SHEET_TRANSITION : 'none'}
       willChange="transform"
       onTransitionEnd={handleTransitionEnd}
@@ -103,7 +110,7 @@ export function RouteDetailsSheet({ open, variant, onClose, onExited, onSelect }
             </Text>
             <MetricDot />
             <Text fontSize="sm" fontWeight="medium" lineHeight="sm" color="muted" whiteSpace="nowrap" truncate>
-              {formatPlacesCount(variant.stops.length)}
+              {formatPlacesCount(placesCount)}
             </Text>
           </Flex>
         </VStack>

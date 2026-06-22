@@ -96,10 +96,11 @@ export function PlacePopover({ open, stop, onClose, onExited }: PlacePopoverProp
   return (
     <Box
       position="absolute"
-      left="8px"
-      right="8px"
+      left="50%"
       bottom="8px"
       zIndex={10}
+      w="calc(100% - 16px)"
+      maxW="720px"
       maxH="calc(100% - 96px)"
       bg="background"
       borderRadius="28px"
@@ -108,7 +109,11 @@ export function PlacePopover({ open, stop, onClose, onExited }: PlacePopoverProp
       boxShadow={visible ? 'lg' : 'none'}
       display="flex"
       flexDirection="column"
-      transform={visible ? 'translate3d(0, 0, 0)' : 'translate3d(0, calc(100% + 8px), 0)'}
+      transform={
+        visible
+          ? 'translate3d(-50%, 0, 0)'
+          : 'translate3d(-50%, calc(100% + 8px), 0)'
+      }
       transition={motionReady ? SHEET_TRANSITION : 'none'}
       willChange="transform"
       onTransitionEnd={handleTransitionEnd}

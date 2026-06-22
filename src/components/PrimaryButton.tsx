@@ -5,13 +5,16 @@ type PrimaryButtonProps = {
   children: ReactNode
   onClick: () => void
   disabled?: boolean
+  variant?: 'primary' | 'secondary'
 }
 
 /**
  * Основной CTA: primary fill, h-48, rounded-card(20), text-base medium.
  * 1:1 с Figma (node 137:213 / 147:700).
+ * variant="secondary" — outlined, bg прозрачный.
  */
-export function PrimaryButton({ children, onClick, disabled = false }: PrimaryButtonProps) {
+export function PrimaryButton({ children, onClick, disabled = false, variant = 'primary' }: PrimaryButtonProps) {
+  const isPrimary = variant === 'primary'
   return (
     <chakra.button
       onClick={disabled ? undefined : onClick}
@@ -23,17 +26,19 @@ export function PrimaryButton({ children, onClick, disabled = false }: PrimaryBu
       justifyContent="center"
       px="16px"
       py="8px"
-      bg="primary"
-      color="primaryFg"
+      bg={isPrimary ? 'primary' : 'transparent'}
+      color={isPrimary ? 'primaryFg' : 'primary'}
+      border={isPrimary ? 'none' : '1px solid'}
+      borderColor={isPrimary ? undefined : 'primary'}
       fontFamily="body"
       fontSize="base"
       fontWeight="medium"
       lineHeight="base"
       borderRadius="card"
-      boxShadow="btn"
+      boxShadow={isPrimary ? 'btn' : 'none'}
       cursor="pointer"
       transition="opacity 150ms"
-      _hover={{ opacity: 0.92 }}
+      _hover={{ opacity: 0.85 }}
       _disabled={{ opacity: 0.4, cursor: 'not-allowed' }}
     >
       {children}

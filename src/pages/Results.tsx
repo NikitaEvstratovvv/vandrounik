@@ -9,6 +9,7 @@ import { PrimaryButton } from '@/components/PrimaryButton'
 import { RouteDetailsSheet } from '@/components/RouteDetailsSheet'
 import { RouteVariantPanel } from '@/components/RouteVariantPanel'
 import { SheetOverlay } from '@/components/SheetOverlay'
+import { isRoutePlaceStop } from '@/lib/routing/routeStops'
 import { loadGeneration } from '@/lib/storage/generation'
 import { mapFrostedGradientLayer } from '@/theme/mapOverlay'
 import type { RouteStop } from '@/types'
@@ -90,6 +91,10 @@ export function ResultsPanel({ onClose, onSelectRoute }: ResultsPanelProps) {
 
   const goPrev = () => setVariantIndex((i) => (i - 1 + total) % total)
   const goNext = () => setVariantIndex((i) => (i + 1) % total)
+  const handleStopClick = (stop: RouteStop) => {
+    if (!isRoutePlaceStop(stop)) return
+    setOverlay({ type: 'place', stop })
+  }
   const selectedStopId = overlay.type === 'place' ? overlay.stop.placeId : null
   const showRouteSheet = overlay.type === 'route'
   const concealBottomChrome = showRouteSheet
@@ -102,8 +107,9 @@ export function ResultsPanel({ onClose, onSelectRoute }: ResultsPanelProps) {
         <InteractiveRouteMap
           ref={mapRef}
           stops={variant.stops}
+          geometry={variant.geometry}
           selectedStopId={selectedStopId}
-          onStopClick={(stop) => setOverlay({ type: 'place', stop })}
+          onStopClick={handleStopClick}
         />
       </Box>
 

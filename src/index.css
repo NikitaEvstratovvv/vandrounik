@@ -6,6 +6,8 @@
 html,
 body,
 #root {
+  width: 100%;
+  min-height: 100%;
   height: 100%;
   margin: 0;
 }
@@ -16,9 +18,8 @@ body {
 }
 
 #root {
-  /* Базовый viewport макета Figma: 360px. На десктопе центрируем «телефон». */
   display: flex;
-  justify-content: center;
+  flex-direction: column;
 }
 
 input,
