@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useReducer } from 'react'
 import type { ReactNode } from 'react'
 import { completeDurationForTransport } from '@/lib/transport/speed'
-import type { Duration, Place, Transport, WizardState } from '@/types'
+import type { Duration, InterestId, Place, Transport, WizardState } from '@/types'
 import { WizardContext, type WizardContextValue } from '@/store/wizard-context'
 
 const STORAGE_KEY = 'vandrounik.wizard.v1'
@@ -19,8 +19,8 @@ type Action =
   | { type: 'setOrigin'; place: Place }
   | { type: 'setDestination'; place: Place }
   | { type: 'swapPoints' }
-  | { type: 'setInterests'; interests: string[] }
-  | { type: 'setDuration'; duration: Duration }
+  | { type: 'setInterests'; interests: InterestId[] }
+  | { type: 'setDuration'; duration: Duration | null }
   | { type: 'reset' }
   | { type: 'applyPreset'; preset: Partial<WizardState> }
 
@@ -33,9 +33,9 @@ function reducer(state: WizardState, action: Action): WizardState {
         duration: state.duration ? completeDurationForTransport(state.duration, action.transport) : null,
       }
     case 'setOrigin':
-      return { ...state, origin: action.place }
+      return { ...state, origin: sanitizePlace(action.place), duration: null }
     case 'setDestination':
-      return { ...state, destination: action.place }
+      return { ...state, destination: sanitizePlace(action.place), duration: null }
     case 'swapPoints':
       return { ...state, origin: state.destination, destination: state.origin }
     case 'setInterests':
@@ -72,6 +72,16 @@ function migrateDuration(raw: unknown): Duration | null {
   return null
 }
 
+function sanitizePlace(place: Place): Place {
+  return {
+    id: place.id,
+    title: place.title,
+    subtitle: place.subtitle,
+    lat: place.lat,
+    lng: place.lng,
+  }
+}
+
 function migratePlace(raw: unknown): Place | null {
   if (!raw || typeof raw !== 'object') return null
   const place = raw as Partial<Place>
@@ -84,14 +94,7 @@ function migratePlace(raw: unknown): Place | null {
   ) {
     return null
   }
-  return {
-    id: place.id,
-    title: place.title,
-    subtitle: place.subtitle,
-    lat: place.lat,
-    lng: place.lng,
-    distanceKm: place.distanceKm,
-  }
+  return sanitizePlace(place as Place)
 }
 
 function loadState(): WizardState {

@@ -4,6 +4,7 @@ import { Header } from '@/components/Header'
 import { EmblemLoader } from '@/components/EmblemLoader'
 import { SearchIcon, CloseCircleIcon } from '@/components/icons'
 import { searchPlaces } from '@/data/places'
+import { fetchRoadDistancesFromOrigin } from '@/lib/routing/directRouteKm'
 import { useWizard } from '@/store/wizard-context'
 import { formatDistance } from '@/lib/format'
 import type { Place } from '@/types'
@@ -58,8 +59,12 @@ export function LocationPanel({ point, onClose, focusSeq = 0 }: LocationPanelPro
     debounce.current = setTimeout(async () => {
       try {
         const near = point === 'destination' && state.origin ? state.origin : undefined
-        const found = await searchPlaces(q, { near })
+        let found = await searchPlaces(q, { near })
         if (current !== reqId.current) return
+        if (point === 'destination' && state.origin && found.length > 0) {
+          found = await fetchRoadDistancesFromOrigin(state.origin, found, state.transport)
+          if (current !== reqId.current) return
+        }
         setResults(found)
         setStatus(found.length > 0 ? 'results' : 'nothing')
       } catch {

@@ -3,6 +3,7 @@ import { Box, Flex, Text, VStack } from '@chakra-ui/react'
 import { CloseIcon } from '@/components/icons'
 import { SquareButton } from '@/components/SquareButton'
 import type { RouteStop } from '@/types'
+import { formatPlaceTypeLabel } from '@/data/placeTaxonomy'
 
 const DURATION_MS = 280
 const EASE = 'cubic-bezier(0.4, 0, 0.2, 1)'
@@ -131,7 +132,7 @@ export function PlacePopover({ open, stop, onClose, onExited }: PlacePopoverProp
             {stop.name}
           </Text>
           <Text fontSize="sm" fontWeight="medium" lineHeight="sm" color="muted">
-            {stop.type}
+            {formatPlaceTypeLabel(stop.type, stop.typeGroupLabel)}
           </Text>
         </VStack>
         <SquareButton ariaLabel="Закрыть" onClick={onClose}>

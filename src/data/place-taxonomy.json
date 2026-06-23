@@ -1,0 +1,66 @@
+{
+  "types": {
+    "Замок": {
+      "interest": "castles",
+      "typeGroup": "fortresses",
+      "typeGroupLabel": "Крепости"
+    },
+    "Усадьба": {
+      "interest": "estates",
+      "typeGroup": "manors",
+      "typeGroupLabel": "Поместья"
+    },
+    "Дворец": {
+      "interest": "estates",
+      "typeGroup": "palaces",
+      "typeGroupLabel": "Дворцы"
+    },
+    "Храм": {
+      "interest": "temples",
+      "typeGroup": "christian",
+      "typeGroupLabel": "Христианские храмы"
+    },
+    "Собор": {
+      "interest": "temples",
+      "typeGroup": "christian",
+      "typeGroupLabel": "Христианские храмы"
+    },
+    "Монастырь": {
+      "interest": "temples",
+      "typeGroup": "christian",
+      "typeGroupLabel": "Христианские храмы"
+    },
+    "Синагога": {
+      "interest": "temples",
+      "typeGroup": "jewish",
+      "typeGroupLabel": "Синагоги"
+    },
+    "Мечеть": {
+      "interest": "temples",
+      "typeGroup": "muslim",
+      "typeGroupLabel": "Мечети"
+    },
+    "Нац. парк": {
+      "interest": "reserves",
+      "typeGroup": "national_parks",
+      "typeGroupLabel": "Национальные парки"
+    },
+    "Заповедник": {
+      "interest": "reserves",
+      "typeGroup": "nature_reserves",
+      "typeGroupLabel": "Заповедники и заказники"
+    },
+    "ДОТ": {
+      "interest": "dots",
+      "typeGroup": "dots",
+      "typeGroupLabel": "ДОТы"
+    }
+  },
+  "markerColors": {
+    "castles": "#2D6A4F",
+    "estates": "#8B5E3C",
+    "temples": "#2563EB",
+    "reserves": "#4D9E6A",
+    "dots": "#5C6370"
+  }
+}

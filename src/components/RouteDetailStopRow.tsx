@@ -1,6 +1,7 @@
 import { chakra, Flex, Text } from '@chakra-ui/react'
 import { CheckIcon } from '@/components/icons'
 import { formatDriveMinutes } from '@/lib/format'
+import { formatPlaceTypeLabel } from '@/data/placeTaxonomy'
 import { routeStopLabel } from '@/lib/routing/routeStops'
 import type { RouteStop } from '@/types'
 
@@ -70,7 +71,7 @@ export function RouteDetailStopRow({
           {stop.name}
         </Text>
         <Text fontSize="xs" fontWeight="normal" lineHeight="xs" color="muted" truncate>
-          {stop.type}
+          {formatPlaceTypeLabel(stop.type, stop.typeGroupLabel)}
           {stop.driveMinutesToNext ? ` · ${formatDriveMinutes(stop.driveMinutesToNext)}` : ''}
         </Text>
       </Flex>

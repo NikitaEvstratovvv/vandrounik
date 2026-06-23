@@ -5,8 +5,10 @@ import { Segmented } from '@/components/Segmented'
 import { PrimaryButton } from '@/components/PrimaryButton'
 import { SquareButton } from '@/components/SquareButton'
 import { CloseCircleIcon, CloseIcon } from '@/components/icons'
+import { fetchDirectRouteKm } from '@/lib/routing/directRouteKm'
+import { getRouteTarget } from '@/lib/routing/generateRoutes'
+import { completeDurationForTransport, kmToHours } from '@/lib/transport/speed'
 import { useWizard } from '@/store/wizard-context'
-import { completeDurationForTransport } from '@/lib/transport/speed'
 import type { DurationUnit } from '@/types'
 
 type DurationSheetProps = {
@@ -30,11 +32,37 @@ export function DurationSheet({ open, onClose }: DurationSheetProps) {
 
   useEffect(() => {
     if (!open) return
+
     const duration = state.duration
-    setUnit(duration?.unit ?? 'hours')
-    setHoursValue(duration?.hours != null ? String(duration.hours) : '')
-    setKmValue(duration?.km != null ? String(duration.km) : '')
-  }, [open, state.duration])
+    const hasExplicitDuration = getRouteTarget(state) !== null
+
+    if (hasExplicitDuration && duration) {
+      setUnit(duration.unit)
+      setHoursValue(duration.hours != null ? String(duration.hours) : '')
+      setKmValue(duration.km != null ? String(duration.km) : '')
+      return
+    }
+
+    setUnit('km')
+    setHoursValue('')
+    setKmValue('')
+
+    const origin = state.origin
+    const destination = state.destination
+    if (!origin || !destination) return
+
+    let cancelled = false
+
+    fetchDirectRouteKm(origin, destination, state.transport).then((routeKm) => {
+      if (cancelled || routeKm === null) return
+      setKmValue(String(routeKm))
+      setHoursValue(String(kmToHours(routeKm, state.transport)))
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, state.duration, state.origin, state.destination, state.transport])
 
   const focusInput = () => {
     inputRef.current?.focus({ preventScroll: true })
@@ -42,22 +70,27 @@ export function DurationSheet({ open, onClose }: DurationSheetProps) {
 
   const value = unit === 'hours' ? hoursValue : kmValue
   const setValue = unit === 'hours' ? setHoursValue : setKmValue
-  const numeric = Number(value)
-  const valid = value.trim() !== '' && Number.isFinite(numeric) && numeric > 0
   const unitLabel = unit === 'hours' ? 'ч' : 'км'
 
   const apply = () => {
-    if (!valid) return
-    setDuration(
-      completeDurationForTransport(
-        {
-          unit,
-          hours: parseDurationInput(hoursValue),
-          km: parseDurationInput(kmValue),
-        },
-        state.transport,
-      ),
-    )
+    const hours = parseDurationInput(hoursValue)
+    const km = parseDurationInput(kmValue)
+    const activeValue = unit === 'hours' ? hours : km
+
+    if (activeValue === null) {
+      setDuration(null)
+    } else {
+      setDuration(
+        completeDurationForTransport(
+          {
+            unit,
+            hours,
+            km,
+          },
+          state.transport,
+        ),
+      )
+    }
     onClose()
   }
 
@@ -156,9 +189,7 @@ export function DurationSheet({ open, onClose }: DurationSheetProps) {
       </Flex>
 
       <Box p="16px">
-        <PrimaryButton onClick={apply} disabled={!valid}>
-          Сохранить
-        </PrimaryButton>
+        <PrimaryButton onClick={apply}>Сохранить</PrimaryButton>
       </Box>
     </BottomSheet>
   )

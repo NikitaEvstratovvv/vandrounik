@@ -1,8 +1,9 @@
 import type { RoutePlace } from '@/types'
+import { enrichRoutePlace } from '@/data/placeTaxonomy'
 import osmPlaces from '@/data/belarus-osm-places.json'
 
 /** Seed-точки (куратированные). */
-const SEED_PLACES: RoutePlace[] = [
+const SEED_PLACES_RAW: Omit<RoutePlace, 'typeGroup' | 'typeGroupLabel'>[] = [
   {
     id: 'mir',
     name: 'Мирский замок',
@@ -94,7 +95,7 @@ const SEED_PLACES: RoutePlace[] = [
   {
     id: 'polotsk',
     name: 'Софийский собор',
-    type: 'Храм',
+    type: 'Собор',
     lat: 55.4869,
     lng: 28.7686,
     interests: ['temples'],
@@ -103,17 +104,30 @@ const SEED_PLACES: RoutePlace[] = [
     source: 'seed',
   },
   {
-    id: 'khatyn',
-    name: 'Мемориальный комплекс Хатынь',
-    type: 'Мемориал',
-    lat: 54.335,
-    lng: 27.9467,
-    interests: ['estates'],
+    id: 'dot-grodno-fort',
+    name: 'ДОТ у форта №1',
+    type: 'ДОТ',
+    lat: 53.7265,
+    lng: 23.9128,
+    interests: ['dots'],
     description:
-      'Мемориальный комплекс Хатынь посвящён памяти жертв Великой Отечественной войны. Пространство с колоколами, кладбищем деревень и музеем — важная остановка на маршрутах по Беларуси.',
+      'Долговременная огневая точка в районе Гродненского укрепрайона — пример полевого фортификационного сооружения времён Второй мировой войны.',
+    source: 'seed',
+  },
+  {
+    id: 'dot-astalovichi',
+    name: 'ДОТ у Астоловичей',
+    type: 'ДОТ',
+    lat: 53.5284,
+    lng: 25.7651,
+    interests: ['dots'],
+    description:
+      'Сохранившийся бункер на маршруте между Гродно и Минском — ориентир для маршрутов по военной истории региона.',
     source: 'seed',
   },
 ]
+
+const SEED_PLACES: RoutePlace[] = SEED_PLACES_RAW.map((place) => enrichRoutePlace(place))
 
 function mergePlaces(primary: RoutePlace[], fallback: RoutePlace[]): RoutePlace[] {
   const byId = new Map<string, RoutePlace>()
@@ -124,9 +138,16 @@ function mergePlaces(primary: RoutePlace[], fallback: RoutePlace[]): RoutePlace[
   return [...byId.values()]
 }
 
+function normalizeOsmPlace(place: RoutePlace): RoutePlace {
+  return enrichRoutePlace({
+    ...place,
+    interests: place.interests ?? [],
+  })
+}
+
 // OSM-места идут первыми — актуальная база по всей Беларуси.
 // Seed-места добавляются как дополнение, если точки нет в OSM.
 export const ROUTE_PLACES: RoutePlace[] = mergePlaces(
-  (osmPlaces as RoutePlace[]).map((p) => ({ ...p, source: 'osm' as const })),
+  (osmPlaces as RoutePlace[]).map((p) => normalizeOsmPlace({ ...p, source: 'osm' as const })),
   SEED_PLACES,
 )

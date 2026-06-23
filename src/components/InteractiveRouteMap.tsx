@@ -8,6 +8,8 @@ import {
   useState,
 } from 'react'
 import { Box, Image, Text } from '@chakra-ui/react'
+import { MapStopLabel } from '@/components/map/MapStopLabel'
+import { MapWaypointMarker, ENDPOINT_MARKER_ANCHOR_Y } from '@/components/map/MapWaypointMarker'
 import {
   boundsCenter,
   clampZoom,
@@ -21,10 +23,14 @@ import {
   worldToLatLng,
   zoomAtPoint,
 } from '@/lib/map/projection'
-import { routeStopLabel } from '@/lib/routing/routeStops'
+import {
+  measureMapLabelWidth,
+  resolveMapLabelVisibility,
+} from '@/lib/map/resolveMapLabelVisibility'
+import { isRoutePlaceStop, isRouteEndpoint } from '@/lib/routing/routeStops'
 import type { LatLng, RouteStop } from '@/types'
 
-const ROUTE_COLOR = '#2D6A4F'
+const ROUTE_COLOR = '#0a0a0a'
 const ZOOM_ANIM_MS = 280
 const BUTTON_ZOOM_STEP = 0.85
 const WHEEL_ZOOM_SENSITIVITY = 0.0022
@@ -263,6 +269,28 @@ export const InteractiveRouteMap = forwardRef<InteractiveRouteMapRef, Interactiv
       return coords.join(' ')
     }, [geometry, stops, center, tileZoom, size.width, size.height])
 
+    const visibleLabels = useMemo(() => {
+      const candidates = stops
+        .filter(isRoutePlaceStop)
+        .map((stop) => {
+          const p = latLngToPixel(stop.lat, stop.lng, center, tileZoom, size.width, size.height)
+          return {
+            placeId: stop.placeId,
+            name: stop.name,
+            markerX: p.x,
+            markerY: p.y,
+            order: stop.order,
+            isSelected: selectedStopId === stop.placeId,
+          }
+        })
+      return resolveMapLabelVisibility(candidates, measureMapLabelWidth)
+    }, [stops, center, tileZoom, size.width, size.height, selectedStopId])
+
+    const stopNameByPlaceId = useMemo(
+      () => new Map(stops.map((stop) => [stop.placeId, stop.name])),
+      [stops],
+    )
+
     const handlePointerDown = useCallback(
       (e: React.PointerEvent<HTMLDivElement>) => {
         if ((e.target as HTMLElement).closest('[data-map-marker]')) return
@@ -415,7 +443,7 @@ export const InteractiveRouteMap = forwardRef<InteractiveRouteMapRef, Interactiv
                 points={routePoints}
                 fill="none"
                 stroke={ROUTE_COLOR}
-                strokeWidth="4"
+                strokeWidth="3"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 vectorEffect="non-scaling-stroke"
@@ -433,7 +461,11 @@ export const InteractiveRouteMap = forwardRef<InteractiveRouteMapRef, Interactiv
                 position="absolute"
                 left={`${p.x}px`}
                 top={`${p.y}px`}
-                transform="translate(-50%, -50%)"
+                transform={
+                  isRouteEndpoint(stop)
+                    ? `translate(-50%, -${ENDPOINT_MARKER_ANCHOR_Y}px)`
+                    : 'translate(-50%, -50%)'
+                }
                 pointerEvents="auto"
                 cursor="pointer"
                 onPointerDown={(e) => e.stopPropagation()}
@@ -442,29 +474,24 @@ export const InteractiveRouteMap = forwardRef<InteractiveRouteMapRef, Interactiv
                   onStopClick?.(stop)
                 }}
               >
-                <Box
-                  minW="28px"
-                  h="28px"
-                  px="6px"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  bg="primary"
-                  color="primaryFg"
-                  borderRadius="6px"
-                  fontSize="xs"
-                  fontWeight="semibold"
-                  lineHeight="xs"
-                  boxShadow="xs"
-                  outline={isSelected ? '2px solid' : 'none'}
-                  outlineColor="primary"
-                  outlineOffset="2px"
-                >
-                  {routeStopLabel(stop)}
-                </Box>
+                <MapWaypointMarker stop={stop} isSelected={isSelected} />
               </Box>
             )
           })}
+
+          {visibleLabels.map((label) => (
+            <Box
+              key={label.placeId}
+              position="absolute"
+              left={`${label.markerX}px`}
+              top={`${label.y}px`}
+              width={`${label.width}px`}
+              transform="translateX(-50%)"
+              pointerEvents="none"
+            >
+              <MapStopLabel>{stopNameByPlaceId.get(label.placeId) ?? ''}</MapStopLabel>
+            </Box>
+          ))}
         </Box>
 
         <Text

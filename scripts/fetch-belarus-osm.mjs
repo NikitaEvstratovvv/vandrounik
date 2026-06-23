@@ -1,6 +1,6 @@
 /**
  * Выгрузка POI Беларуси из OpenStreetMap через Overpass API.
- * Категории: замки, усадьбы, храмы, заповедники/нац. парки.
+ * Категории: замки, усадьбы, храмы, заповедники, ДОТы.
  *
  * Запуск: npm run import:osm-belarus
  *
@@ -8,12 +8,17 @@
  * обязательно указывать «© OpenStreetMap».
  */
 
+import { readFileSync } from 'node:fs'
 import { writeFile, mkdir } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(__dirname, '..')
+
+const TYPE_REGISTRY = JSON.parse(
+  readFileSync(join(ROOT, 'src', 'data', 'place-taxonomy.json'), 'utf8'),
+).types
 
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
 
@@ -26,6 +31,10 @@ const POI_FILTERS = `
   nwr["boundary"="national_park"](area.a);
   nwr["leisure"="nature_reserve"](area.a);
   nwr["boundary"="protected_area"]["protect_class"~"^[1-6]$"](area.a);
+  nwr["historic"="bunker"](area.a);
+  nwr["military"="bunker"](area.a);
+  nwr["man_made"="bunker"](area.a);
+  nwr["building"="bunker"](area.a);
 `.trim()
 
 const COUNTRY_QUERY = `
@@ -68,6 +77,17 @@ function getName(tags) {
   return (tags['name:ru'] || tags['name:be'] || tags.name || '').trim()
 }
 
+function withTaxonomy(type) {
+  const meta = TYPE_REGISTRY[type]
+  if (!meta) return null
+  return {
+    type,
+    interests: [meta.interest],
+    typeGroup: meta.typeGroup,
+    typeGroupLabel: meta.typeGroupLabel,
+  }
+}
+
 function getTypeAndInterests(tags) {
   const historic = tags.historic ?? ''
   const building = tags.building ?? ''
@@ -75,18 +95,23 @@ function getTypeAndInterests(tags) {
   const boundary = tags.boundary ?? ''
   const leisure = tags.leisure ?? ''
   const castleType = tags.castle_type ?? ''
+  const military = tags.military ?? ''
+  const manMade = tags.man_made ?? ''
 
+  if (historic === 'bunker' || military === 'bunker' || manMade === 'bunker' || building === 'bunker') {
+    return withTaxonomy('ДОТ')
+  }
   if (boundary === 'national_park') {
-    return { type: 'Нац. парк', interests: ['reserves'] }
+    return withTaxonomy('Нац. парк')
   }
   if (leisure === 'nature_reserve' || boundary === 'protected_area') {
-    return { type: 'Заповедник', interests: ['reserves'] }
+    return withTaxonomy('Заповедник')
   }
   if (historic === 'castle' || castleType) {
-    return { type: 'Замок', interests: ['castles'] }
+    return withTaxonomy('Замок')
   }
   if (historic === 'manor') {
-    return { type: 'Усадьба', interests: ['estates'] }
+    return withTaxonomy('Усадьба')
   }
   if (
     building === 'cathedral' ||
@@ -98,14 +123,25 @@ function getTypeAndInterests(tags) {
       building === 'cathedral' ? 'Собор'
       : building === 'monastery' ? 'Монастырь'
       : 'Храм'
-    return { type: subType, interests: ['temples'] }
+    return withTaxonomy(subType)
   }
   if (amenity === 'place_of_worship') {
     const religion = tags.religion ?? ''
     const subType = religion === 'jewish' ? 'Синагога' : religion === 'muslim' ? 'Мечеть' : 'Храм'
-    return { type: subType, interests: ['temples'] }
+    return withTaxonomy(subType)
   }
   return null
+}
+
+function resolveName(tags, coords, mapped) {
+  const direct = getName(tags)
+  if (direct) return direct
+  if (mapped.type === 'ДОТ') {
+    const ref = (tags.ref || tags['ref:BY'] || '').trim()
+    if (ref) return `ДОТ ${ref}`
+    return `ДОТ (${coords.lat.toFixed(3)}, ${coords.lng.toFixed(3)})`
+  }
+  return ''
 }
 
 function buildDescription(name, type, city) {
@@ -193,15 +229,15 @@ function elementsToPlaces(elements) {
 
   for (const el of elements) {
     const tags = el.tags ?? {}
-    const name = getName(tags)
-    if (!name) continue
-
     const coords = getCoords(el)
     if (!coords) continue
     if (!inBbox(coords.lat, coords.lng)) continue
 
     const mapped = getTypeAndInterests(tags)
     if (!mapped) continue
+
+    const name = resolveName(tags, coords, mapped)
+    if (!name) continue
 
     const id = `osm-${typePrefix(el.type)}-${el.id}`
     if (seen.has(id)) continue
@@ -213,6 +249,8 @@ function elementsToPlaces(elements) {
       id,
       name,
       type: mapped.type,
+      typeGroup: mapped.typeGroup,
+      typeGroupLabel: mapped.typeGroupLabel,
       lat: coords.lat,
       lng: coords.lng,
       interests: mapped.interests,

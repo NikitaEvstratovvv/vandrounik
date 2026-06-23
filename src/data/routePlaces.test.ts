@@ -24,4 +24,11 @@ describe('ROUTE_PLACES', () => {
     )
     expect(reserves.length).toBeGreaterThan(100)
   })
+
+  it('includes DOT places from seed and taxonomy metadata on all places', () => {
+    const dots = ROUTE_PLACES.filter((place) => place.interests.includes('dots'))
+    expect(dots.length).toBeGreaterThan(0)
+    expect(dots.every((place) => place.typeGroup === 'dots')).toBe(true)
+    expect(ROUTE_PLACES.every((place) => place.typeGroupLabel.length > 0)).toBe(true)
+  })
 })

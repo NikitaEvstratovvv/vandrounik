@@ -5,6 +5,7 @@ import { PrimaryButton } from '@/components/PrimaryButton'
 import { CheckIcon } from '@/components/icons'
 import { INTERESTS } from '@/data/interests'
 import { useWizard } from '@/store/wizard-context'
+import type { InterestId } from '@/types'
 
 type InterestsPanelProps = {
   onClose: () => void
@@ -13,9 +14,9 @@ type InterestsPanelProps = {
 /** S2 — Что посмотреть (выбор категорий). 1:1 с Figma (node 147:667). */
 export function InterestsPanel({ onClose }: InterestsPanelProps) {
   const { state, setInterests } = useWizard()
-  const [selected, setSelected] = useState<string[]>(state.interests)
+  const [selected, setSelected] = useState<InterestId[]>(state.interests)
 
-  const toggle = (id: string) => {
+  const toggle = (id: InterestId) => {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
 

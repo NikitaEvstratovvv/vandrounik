@@ -88,10 +88,7 @@ export async function searchPlaces(
 
   if (!options.near) return places
 
-  return places
-    .map((place) => ({
-      ...place,
-      distanceKm: haversineKm(options.near!, place),
-    }))
-    .sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0))
+  return [...places].sort(
+    (a, b) => haversineKm(options.near!, a) - haversineKm(options.near!, b),
+  )
 }

@@ -2,13 +2,13 @@
 
 PWA для планирования автопутешествий по Беларуси: генерация маршрутов и трекер «был здесь».
 
-Реализация flow создания маршрута по макетам Figma и спекам из `Design Process/projects/Vandrounik/05-ui/`.
+Спеки: `Design Process/projects/Vandrounik/05-ui/` (синхронизированы с этим репозиторием).
 
 ## Стек
 
 - React 19 + TypeScript
 - Vite
-- Chakra UI v3 (кастомная тема в `src/theme/system.ts`)
+- Chakra UI v3 (тема в `src/theme/system.ts`)
 - React Router v7
 
 ## Запуск
@@ -18,50 +18,74 @@ npm install
 npm run dev
 ```
 
-Открыть `http://localhost:5173`. Базовый viewport — 360×800 (Android baseline); на десктопе экран центрируется как «телефон».
+Открыть `http://localhost:5173`. Viewport — **360×800**; на десктопе экран центрируется как «телефон».
 
 ## Скрипты
 
 | Команда | Что делает |
-|---------|-----------|
+|---------|------------|
 | `npm run dev` | Dev-сервер Vite |
-| `npm run build` | Type-check (`tsc -b`) + production-сборка |
+| `npm run build` | Type-check + production-сборка |
 | `npm run lint` | ESLint |
+| `npm run test` | Vitest |
 | `npm run preview` | Превью production-сборки |
+| `npm run import:osm-belarus` | Импорт POI из OSM |
 
-## Реализованный flow
+## Реализованный flow (v1)
 
 ```
 E0 Splash (/)
   → E1 Хаб (/plan)
-      ├── S1 Выбор направления (/plan/location?point=origin|destination)
-      ├── S2 Что посмотреть      (/plan/interests)
-      ├── BS1 Длительность        (bottom sheet поверх /plan)
-      └── L1 Загрузка             (/plan/loading) → E2 (заглушка, /results)
+      ├── S1  Выбор направления     overlay  /plan/location?point=origin|destination
+      ├── S2  Что посмотреть        overlay  /plan/interests
+      ├── BS1 Длительность          sheet (state)
+      └── L1  Загрузка              /plan/loading
+            → E2  Выбор маршрута    overlay  /plan/results
+                → E3  Детали        overlay  /plan/results/:variantId
 ```
+
+Архитектура: `Plan.tsx` рендерит overlay-панели по URL; child routes — для deep-link.
 
 ### Экраны
 
-| Экран | Файл | Назначение |
-|-------|------|-----------|
-| E0 | `src/pages/Splash.tsx` | Загрузка PWA, авто-переход на /plan |
-| E1 | `src/pages/Plan.tsx` | Хаб: режим, направление, интересы, длительность, CTA |
-| S1 | `src/pages/Location.tsx` | Поиск направления (states: empty/loading/results/nothing) |
-| S2 | `src/pages/Interests.tsx` | Выбор категорий (checkbox cards) |
+| ID | Файл | Назначение |
+|----|------|------------|
+| E0 | `src/pages/Splash.tsx` | Splash, авто-переход на /plan |
+| E1 | `src/pages/Plan.tsx` | Хаб: транспорт, направление, интересы, длительность |
+| S1 | `src/pages/Location.tsx` | Поиск Nominatim (откуда/куда) |
+| S2 | `src/pages/Interests.tsx` | 4 категории интересов |
 | BS1 | `src/components/DurationSheet.tsx` | Длительность (часы / км) |
-| L1 | `src/pages/Loading.tsx` | Спиннер + анимированный текст |
-| E2 | `src/pages/ResultsStub.tsx` | Заглушка (не спроектирован в Figma) |
+| L1 | `src/pages/Loading.tsx` | Генерация маршрута (OSRM) |
+| E2 | `src/pages/Results.tsx` | Карта + 3 варианта маршрута |
+| E3 | `src/pages/RouteDetail.tsx` | Список остановок, «был здесь» |
+
+### Генерация маршрута
+
+- **Поиск:** Nominatim (`/api/nominatim`), Беларусь
+- **Маршрут:** OSRM Trip (`/api/osrm`) + POI из `ROUTE_PLACES`
+- **Варианты:** 3 (`MIN_ROUTE_VARIANTS`)
+- **Круговой:** если origin ≈ destination (≤ 0.1 км)
+
+Подробнее: [docs/DATA-POI.md](docs/DATA-POI.md)
+
+### CTA «Подобрать маршрут»
+
+Требует: origin + destination (с координатами) + ≥1 интерес. Длительность опциональна.
 
 ### Состояние
 
-Параметры мастера хранятся в `src/store/wizard.tsx` (React Context + reducer) с персистом в `localStorage`.
+- Wizard: `src/store/wizard.tsx` → `localStorage` `vandrounik.wizard.v1`
+- Результат генерации: `src/lib/storage/generation.ts` → `vandrounik.generation.v3`
+- Visited: `src/lib/storage/visited.ts`
 
 ## Дизайн-токены
 
-См. `src/theme/system.ts` — соответствуют `05-ui/design-tokens.md` (палитра, типографика, радиусы, тени).
+`src/theme/system.ts` — neutral palette, Inter + Oswald. См. `Design Process/.../05-ui/design-tokens.md`.
 
-## Не реализовано (out of scope текущего flow)
+## Не реализовано (v2+)
 
-- E2 Результаты, E3 Детали маршрута (не спроектированы в Figma)
-- Реальная карта (Яндекс JS API), реальная генерация и API
-- Поиск мест — мок-данные (`src/data/places.ts`)
+- Tab bar (План / Поездки / Каталог / Профиль)
+- Сохранение поездки (E3 — stub)
+- E4 карточка места, E5/E6 поездки, E7 каталог, E8/E9 профиль
+- Внешний навигатор (Яндекс / Google)
+- Push, шаринг маршрута

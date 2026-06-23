@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { Duration, Place, Transport, WizardState } from '@/types'
+import type { Duration, InterestId, Place, Transport, WizardState } from '@/types'
 
 export type WizardContextValue = {
   state: WizardState
@@ -7,8 +7,8 @@ export type WizardContextValue = {
   setOrigin: (place: Place) => void
   setDestination: (place: Place) => void
   swapPoints: () => void
-  setInterests: (interests: string[]) => void
-  setDuration: (duration: Duration) => void
+  setInterests: (interests: InterestId[]) => void
+  setDuration: (duration: Duration | null) => void
   reset: () => void
   /** Атомарно применить пресет (например, демо-маршрут). */
   applyPreset: (preset: Partial<WizardState>) => void

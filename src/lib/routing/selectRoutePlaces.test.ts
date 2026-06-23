@@ -1,21 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { bearingDeg, haversineKm, segmentProjection } from '@/lib/geo/distance'
-import { planRoute } from '@/lib/routing/osrm'
+import { planRoute, planTrip } from '@/lib/routing/osrm'
 import {
   appendCircularFinish,
   circularRadiusCapRatio,
   desiredPoiCount,
   desiredPoiCounts,
+  desiredPoiCountsCircular,
+  directRouteDistanceKm,
   fallbackPoiCountsForTarget,
   filterCandidatesByTargetUpperBound,
+  generateRoutes,
   getRouteTarget,
+  isCandidateWithinTargetBounds,
   minDesiredPoiCount,
+  resolveCorridorKm,
   resolveRouteTarget,
   routeTargetPenalty,
   routeTargetDiff,
   selectBestCandidates,
+  selectDiverseCandidates,
   selectRoutePlaces,
   shouldBuildFallbackCandidates,
+  stopSetDistance,
   targetDistanceKm,
   targetAnchorDistanceKm,
 } from './generateRoutes'
@@ -26,6 +33,7 @@ vi.mock('@/lib/routing/osrm', async (importOriginal) => {
   return {
     ...actual,
     planRoute: vi.fn(),
+    planTrip: vi.fn(),
   }
 })
 
@@ -151,6 +159,37 @@ describe('selectRoutePlaces', () => {
     expect(fallbackPoiCountsForTarget(400)).toEqual([7, 8])
   })
 
+  it('uses fewer POI counts for circular routes than linear at 300 km', () => {
+    expect(desiredPoiCounts(300)).toEqual([7, 8])
+    expect(desiredPoiCountsCircular(300)).toEqual([4, 5, 6])
+  })
+
+  it('widens corridor when target distance exceeds direct route', () => {
+    const baranovichiState: WizardState = {
+      ...baseState,
+      destination: {
+        id: 'destination',
+        title: 'Барановичи',
+        subtitle: 'Брестская область',
+        lat: 53.1327,
+        lng: 26.0139,
+      },
+      duration: { unit: 'km', hours: null, km: 800 },
+    }
+    const target = getRouteTarget(baranovichiState)
+    const directKm = directRouteDistanceKm(baranovichiState)
+
+    expect(directKm).not.toBeNull()
+    expect(resolveCorridorKm(baranovichiState, target)).toBe(120)
+  })
+
+  it('requires candidates to meet lower and upper target bounds', () => {
+    const target = { unit: 'km' as const, value: 300 }
+    expect(isCandidateWithinTargetBounds({ totalKm: 250, totalMinutes: 300 }, target)).toBe(false)
+    expect(isCandidateWithinTargetBounds({ totalKm: 280, totalMinutes: 300 }, target)).toBe(true)
+    expect(isCandidateWithinTargetBounds({ totalKm: 450, totalMinutes: 500 }, target)).toBe(false)
+  })
+
   it('uses a more compact circular radius for dense route targets', () => {
     expect(circularRadiusCapRatio(8)).toBeLessThan(circularRadiusCapRatio(5))
     expect(circularRadiusCapRatio(12)).toBeLessThan(circularRadiusCapRatio(8))
@@ -214,6 +253,28 @@ describe('selectRoutePlaces', () => {
     expect(selected.map((candidate) => candidate.score)).toEqual([1, 2, 3])
   })
 
+  it('measures stop set distance with subset penalty', () => {
+    expect(stopSetDistance(['a', 'b', 'c'], ['x', 'y', 'z'])).toBe(1)
+    expect(stopSetDistance(['a', 'b', 'c'], ['a', 'b', 'd'])).toBe(0.5)
+    expect(stopSetDistance(['a', 'b', 'c'], ['a', 'b'])).toBeLessThan(stopSetDistance(['a', 'b', 'c'], ['x', 'y', 'z']))
+  })
+
+  it('prefers diverse stop sets over similar high-scoring candidates', () => {
+    const selected = selectDiverseCandidates(
+      [
+        { score: 1, stopIds: ['a', 'b', 'c'] },
+        { score: 1.05, stopIds: ['a', 'b', 'd'] },
+        { score: 1.1, stopIds: ['a', 'b', 'e'] },
+        { score: 1.15, stopIds: ['x', 'y', 'z'] },
+      ],
+      3,
+    )
+
+    expect(selected[0].stopIds).toEqual(['a', 'b', 'c'])
+    expect(selected.map((candidate) => candidate.stopIds.join('|'))).toContain('x|y|z')
+    expect(new Set(selected.map((candidate) => candidate.stopIds.join('|'))).size).toBe(3)
+  })
+
   it('filters overshooting candidates when bounded alternatives exist', () => {
     const filtered = filterCandidatesByTargetUpperBound(
       [
@@ -268,6 +329,10 @@ describe('selectRoutePlaces', () => {
           order: 1,
           name: origin.title,
           type: 'Старт',
+          typeGroup: 'fortresses',
+          typeGroupLabel: 'Старт',
+          interests: [],
+          primaryInterest: 'castles',
           lat: origin.lat,
           lng: origin.lng,
           driveMinutesToNext: 30,
@@ -277,6 +342,10 @@ describe('selectRoutePlaces', () => {
           order: 2,
           name: 'Точка маршрута',
           type: 'Замок',
+          typeGroup: 'fortresses',
+          typeGroupLabel: 'Крепости',
+          interests: ['castles'],
+          primaryInterest: 'castles',
           lat: 53.8,
           lng: 24.2,
           driveMinutesToNext: 35,
@@ -318,6 +387,29 @@ describe('selectRoutePlaces', () => {
     const minGap = minAngularGapDeg(circularGrodnoState.origin!, places)
     expect(minGap).toBeGreaterThan(40)
   })
+
+  it('selects different POIs for different variant seeds along linear corridor', () => {
+    const count = 5
+    const seed0 = selectRoutePlaces(baseState, count, 0)
+    const seed1 = selectRoutePlaces(baseState, count, 1)
+    const seed2 = selectRoutePlaces(baseState, count, 2)
+
+    expect(seed0.length).toBe(count)
+    expect(seed1.length).toBe(count)
+    expect(seed2.length).toBe(count)
+
+    const overlap01 = stopSetDistance(
+      seed0.map((place) => place.id),
+      seed1.map((place) => place.id),
+    )
+    const overlap02 = stopSetDistance(
+      seed0.map((place) => place.id),
+      seed2.map((place) => place.id),
+    )
+
+    expect(overlap01).toBeGreaterThan(0.2)
+    expect(overlap02).toBeGreaterThan(0.2)
+  })
 })
 
 describe('resolveRouteTarget', () => {
@@ -343,10 +435,29 @@ describe('resolveRouteTarget', () => {
       unit: 'km',
       value: 97,
     })
-    expect(planRoute).toHaveBeenCalledWith([
-      baseState.origin,
-      baseState.destination,
-    ])
+    expect(planRoute).toHaveBeenCalledWith(
+      [baseState.origin, baseState.destination],
+      { transport: 'car' },
+    )
+  })
+
+  it('uses cycling profile when transport is bike', async () => {
+    vi.mocked(planRoute).mockResolvedValue({
+      waypointOrder: [0, 1],
+      legMinutes: [240],
+      distanceKm: 97.3,
+      durationMinutes: 240,
+      geometry: [],
+    })
+
+    await expect(resolveRouteTarget({ ...baseState, transport: 'bike', duration: null })).resolves.toEqual({
+      unit: 'km',
+      value: 97,
+    })
+    expect(planRoute).toHaveBeenCalledWith(
+      [baseState.origin, baseState.destination],
+      { transport: 'bike' },
+    )
   })
 
   it('returns null for circular routes without explicit duration', async () => {
@@ -361,5 +472,119 @@ describe('resolveRouteTarget', () => {
     const expectedKm = Math.max(1, Math.round(haversineKm(state.origin!, state.destination!)))
 
     await expect(resolveRouteTarget(state)).resolves.toEqual({ unit: 'km', value: expectedKm })
+  })
+})
+
+function stopIdsFromVariant(stops: { placeId: string }[]): string[] {
+  return stops
+    .filter((stop) => stop.placeId !== 'origin' && stop.placeId !== 'destination')
+    .map((stop) => stop.placeId)
+    .sort()
+}
+
+function mockTripForWaypoints(waypoints: { lat: number; lng: number }[]) {
+  const waypointOrder = waypoints.map((_, index) => index)
+  const legMinutes = Array.from({ length: Math.max(waypoints.length - 1, 1) }, () => 45)
+  const poiCount = Math.max(0, waypoints.length - 2)
+  const distanceKm = Math.max(80, 180 + poiCount * 85)
+  return {
+    waypointOrder,
+    legMinutes,
+    distanceKm,
+    durationMinutes: legMinutes.reduce((sum, minutes) => sum + minutes, 0),
+    geometry: waypoints.map((point) => ({ lat: point.lat, lng: point.lng })),
+  }
+}
+
+function mockCircularTripForWaypoints(waypoints: { lat: number; lng: number }[]) {
+  const waypointOrder = waypoints.map((_, index) => index)
+  const legMinutes = Array.from({ length: Math.max(waypoints.length - 1, 1) }, () => 35)
+  const poiCount = Math.max(0, waypoints.length - 1)
+  const distanceKm = Math.max(120, 80 + poiCount * 45)
+  return {
+    waypointOrder,
+    legMinutes,
+    distanceKm,
+    durationMinutes: legMinutes.reduce((sum, minutes) => sum + minutes, 0),
+    geometry: waypoints.map((point) => ({ lat: point.lat, lng: point.lng })),
+  }
+}
+
+describe('generateRoutes diversity', () => {
+  const diversityState: WizardState = {
+    ...baseState,
+    duration: { unit: 'km', hours: null, km: 150 },
+  }
+
+  beforeEach(() => {
+    vi.mocked(planRoute).mockReset()
+    vi.mocked(planTrip).mockReset()
+    vi.mocked(planRoute).mockImplementation(async (waypoints) => mockTripForWaypoints(waypoints))
+    vi.mocked(planTrip).mockImplementation(async (waypoints) => mockTripForWaypoints(waypoints))
+  })
+
+  it('returns diverse variants without duplicate stop sets', async () => {
+    const result = await generateRoutes(diversityState)
+
+    expect(result.variants.length).toBeGreaterThanOrEqual(2)
+    expect(result.variants.length).toBeLessThanOrEqual(3)
+
+    const stopSets = result.variants.map((variant) => stopIdsFromVariant(variant.stops))
+    expect(new Set(stopSets.map((ids) => ids.join('|'))).size).toBe(stopSets.length)
+
+    for (let i = 0; i < stopSets.length; i++) {
+      for (let j = i + 1; j < stopSets.length; j++) {
+        expect(stopSetDistance(stopSets[i], stopSets[j])).toBeGreaterThanOrEqual(0.35)
+      }
+    }
+  })
+})
+
+describe('generateRoutes target fitting', () => {
+  beforeEach(() => {
+    vi.mocked(planRoute).mockReset()
+    vi.mocked(planTrip).mockReset()
+    vi.mocked(planRoute).mockImplementation(async (waypoints) => mockTripForWaypoints(waypoints))
+    vi.mocked(planTrip).mockImplementation(async (waypoints) => mockTripForWaypoints(waypoints))
+  })
+
+  it('prefers longer routes when target km exceeds direct distance', async () => {
+    const state: WizardState = {
+      ...baseState,
+      destination: {
+        id: 'destination',
+        title: 'Барановичи',
+        subtitle: 'Брестская область',
+        lat: 53.1327,
+        lng: 26.0139,
+      },
+      duration: { unit: 'km', hours: null, km: 800 },
+    }
+
+    const result = await generateRoutes(state)
+    const bestKm = Math.max(...result.variants.map((variant) => variant.totalKm))
+
+    expect(bestKm).toBeGreaterThanOrEqual(680)
+  })
+})
+
+describe('generateRoutes circular routes', () => {
+  beforeEach(() => {
+    vi.mocked(planRoute).mockReset()
+    vi.mocked(planTrip).mockReset()
+    vi.mocked(planTrip).mockImplementation(async (waypoints) => mockCircularTripForWaypoints(waypoints))
+  })
+
+  it('uses fewer POI counts for circular routes at 300 km', async () => {
+    const state: WizardState = {
+      ...circularGrodnoState,
+      duration: { unit: 'km', hours: null, km: 300 },
+    }
+
+    const result = await generateRoutes(state)
+    const poiCounts = result.variants.map((variant) => stopIdsFromVariant(variant.stops).length)
+
+    expect(poiCounts.every((count) => count >= 3 && count <= 7)).toBe(true)
+    expect(Math.max(...result.variants.map((variant) => variant.totalKm))).toBeLessThan(450)
   })
 })

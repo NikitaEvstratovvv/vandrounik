@@ -16,10 +16,23 @@ export type Place = {
 
 /** Категория интересов (S2). */
 export type Interest = {
-  id: string
+  id: InterestId
   title: string
   description: string
 }
+
+export type InterestId = 'estates' | 'castles' | 'temples' | 'reserves' | 'dots'
+
+export type TypeGroupId =
+  | 'fortresses'
+  | 'manors'
+  | 'palaces'
+  | 'christian'
+  | 'jewish'
+  | 'muslim'
+  | 'national_parks'
+  | 'nature_reserves'
+  | 'dots'
 
 /** Длительность поездки: отдельные значения для часов и километров. */
 export type Duration = {
@@ -33,7 +46,8 @@ export type WizardState = {
   transport: Transport
   origin: Place | null
   destination: Place | null
-  interests: string[]
+  interests: InterestId[]
+  /** Опционально: желаемая длительность / дистанция поездки. */
   duration: Duration | null
 }
 
@@ -43,6 +57,10 @@ export type RouteStop = {
   order: number
   name: string
   type: string
+  typeGroup: TypeGroupId
+  typeGroupLabel: string
+  interests: InterestId[]
+  primaryInterest: InterestId
   lat: number
   lng: number
   description?: string
@@ -73,7 +91,7 @@ export type GenerationParams = {
   durationUnit: DurationUnit | null
   durationHours: number | null
   durationKm: number | null
-  interests: string[]
+  interests: InterestId[]
 }
 
 /** POI для генерации маршрута (seed и OSM-импорт). */
@@ -81,9 +99,11 @@ export type RoutePlace = {
   id: string
   name: string
   type: string
+  typeGroup: TypeGroupId
+  typeGroupLabel: string
   lat: number
   lng: number
-  interests: string[]
+  interests: InterestId[]
   description: string
   source?: 'seed' | 'osm'
 }

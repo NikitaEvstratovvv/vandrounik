@@ -13,6 +13,10 @@ export function kmToHours(km: number, transport: Transport): number {
   return Math.max(1, Math.round(km / TRANSPORT_SPEED_KMH[transport]))
 }
 
+export function minutesForDistanceKm(km: number, transport: Transport): number {
+  return Math.max(1, Math.round((km / TRANSPORT_SPEED_KMH[transport]) * 60))
+}
+
 export function completeDurationForTransport(duration: Duration, transport: Transport): Duration {
   if (duration.unit === 'km' && duration.km !== null) {
     return {

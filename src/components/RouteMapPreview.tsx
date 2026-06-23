@@ -1,8 +1,7 @@
 import { Box } from '@chakra-ui/react'
 import type { LatLng, RouteStop } from '@/types'
 
-/** Цвет линии маршрута — brand.primary из design-tokens.md */
-const ROUTE_LINE_COLOR = '#2D6A4F'
+const ROUTE_LINE_COLOR = '#0a0a0a'
 
 type RouteMapPreviewProps = {
   stops: RouteStop[]
@@ -47,12 +46,20 @@ export function RouteMapPreview({ stops, geometry }: RouteMapPreviewProps) {
           points={polyline}
           fill="none"
           stroke={ROUTE_LINE_COLOR}
-          strokeWidth="2.5"
+          strokeWidth="3"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
         {svgPoints.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r="2.5" fill={ROUTE_LINE_COLOR} />
+          <rect
+            key={i}
+            x={p.x - 1.5}
+            y={p.y - 1.5}
+            width="3"
+            height="3"
+            rx="1"
+            fill={ROUTE_LINE_COLOR}
+          />
         ))}
       </svg>
     </Box>

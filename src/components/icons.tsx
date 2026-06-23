@@ -85,3 +85,38 @@ export function MinusIcon({ size = 24, strokeWidth = 2 }: IconProps) {
     </svg>
   )
 }
+
+/** hugeicons/racing-flag — маркеры старта/финиша на карте (Figma node 264:930). */
+export function RacingFlagIcon({ size = 16 }: Pick<IconProps, 'size'>) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 13.2001 14.5332"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M2.38123 8.53945C5.26669 9.88786 7.93335 4.49422 12.6 7.19104L10.6 1.12311C7.54932 -0.933519 4.30859 3.83737 0.60002 2.34991L3.9334 13.9331"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M11.2667 3.9331C7.60002 1.26645 4.60002 7.26638 1.60002 5.26637"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3.93335 2.53627L5.81571 7.93309M7.38433 1.26643L9.26669 6.34579"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}

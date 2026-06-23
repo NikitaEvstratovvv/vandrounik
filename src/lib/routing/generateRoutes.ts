@@ -1,4 +1,5 @@
 import { INTERESTS } from '@/data/interests'
+import { primaryInterest } from '@/data/placeTaxonomy'
 import { ROUTE_PLACES } from '@/data/routePlaces'
 import { distanceToSegmentKm, bearingDeg, haversineKm, segmentProjection } from '@/lib/geo/distance'
 import { planRoute, planTrip } from '@/lib/routing/osrm'
@@ -6,6 +7,7 @@ import { hoursToKm } from '@/lib/transport/speed'
 import type {
   GenerationParams,
   GenerationResult,
+  InterestId,
   LatLng,
   RoutePlace,
   RouteStop,
@@ -20,10 +22,16 @@ const ENDPOINT_DEDUPE_KM = 0.3
 const PROJECTION_MARGIN = 0.08
 const MAX_POI_PER_ROUTE = 12
 const MIN_POI_SPACING_KM = 16
-const CANDIDATE_SEEDS = [0, 1] as const
+const CANDIDATE_SEEDS = [0, 1, 2] as const
 const LONG_TARGET_SEEDS = [0, 1, 2] as const
+const EMERGENCY_DIVERSE_SEEDS = [3, 4, 5] as const
 const LONG_TARGET_KM = 150
+export const TARGET_LOWER_BOUND_RATIO = 0.85
 const TARGET_UPPER_BOUND_RATIO = 1.35
+export const TARGET_ACCEPT_RATIO = 0.12
+export const DIVERSITY_SCORE_TOLERANCE = 0.25
+export const MIN_STOP_SET_DISTANCE = 0.35
+const SUBSET_DISTANCE_PENALTY = 0.25
 const DEFAULT_CANDIDATE_SPECS = [
   { count: 5, seed: 0 },
   { count: 4, seed: 1 },
@@ -114,7 +122,7 @@ export async function resolveRouteTarget(state: WizardState): Promise<RouteTarge
   if (isCircular(state)) return null
 
   try {
-    const trip = await planRoute([state.origin, state.destination])
+    const trip = await planRoute([state.origin, state.destination], { transport: state.transport })
     return { unit: 'km', value: Math.max(1, Math.round(trip.distanceKm)) }
   } catch {
     const km = Math.max(1, Math.round(haversineKm(state.origin, state.destination)))
@@ -144,9 +152,31 @@ export function routeTargetPenalty(
   return 0
 }
 
-function routeExceedsSoftTarget(route: { distanceKm: number; durationMinutes: number }, target: RouteTarget | null): boolean {
+function routeMatchesTargetAcceptance(
+  route: { distanceKm: number; durationMinutes: number },
+  target: RouteTarget | null,
+): boolean {
   if (!target) return false
-  return routeTargetValue(route, target) > target.value * 1.25
+  const diff = routeTargetDiff(route, target)
+  return diff <= Math.max(target.value * TARGET_ACCEPT_RATIO, 15)
+}
+
+export function directRouteDistanceKm(state: WizardState): number | null {
+  if (!hasValidEndpoint(state.origin) || !hasValidEndpoint(state.destination)) return null
+  if (isCircular(state)) return null
+  return haversineKm(state.origin, state.destination)
+}
+
+export function resolveCorridorKm(state: WizardState, target: RouteTarget | null): number {
+  const directKm = directRouteDistanceKm(state)
+  const targetKm = targetDistanceKm(target, state.transport)
+  if (directKm === null || targetKm === null || directKm <= 1) return CORRIDOR_KM
+
+  const ratio = targetKm / directKm
+  if (ratio >= 3) return 120
+  if (ratio >= 2) return 80
+  if (ratio >= 1.5) return 50
+  return CORRIDOR_KM
 }
 
 export function targetDistanceKm(target: RouteTarget | null, transport: WizardState['transport'] = 'car'): number | null {
@@ -181,6 +211,23 @@ export function desiredPoiCounts(targetKm: number | null): number[] {
   if (targetKm < 200) return [5, 6, 7]
   if (targetKm < 350) return [7, 8]
   return [9, 10, 11, 12]
+}
+
+export function desiredPoiCountsCircular(targetKm: number | null): number[] {
+  if (targetKm === null) return [4, 5]
+  if (targetKm < 100) return [3, 4]
+  if (targetKm < 200) return [4, 5]
+  if (targetKm < 350) return [4, 5, 6]
+  return [5, 6, 7]
+}
+
+export function resolveCandidateCounts(state: WizardState, target: RouteTarget | null): number[] {
+  const targetKm = targetDistanceKm(target, state.transport)
+  return isCircular(state) ? desiredPoiCountsCircular(targetKm) : desiredPoiCounts(targetKm)
+}
+
+export function minDesiredPoiCountForState(state: WizardState, target: RouteTarget | null): number {
+  return resolveCandidateCounts(state, target)[0] ?? 0
 }
 
 export function minDesiredPoiCount(targetKm: number | null): number {
@@ -251,7 +298,7 @@ function angularDiffDeg(a: number, b: number): number {
 
 function takeEvenlyAlongProjection(
   pool: ScoredPlace[],
-  interestIds: string[],
+  interestIds: InterestId[],
   count: number,
   variantIndex: number,
   targetKm: number | null,
@@ -261,14 +308,14 @@ function takeEvenlyAlongProjection(
   const margin = PROJECTION_MARGIN
   const span = 1 - 2 * margin
   const binWidth = span / count
-  const variantShift = (variantIndex * binWidth) / 3
+  const variantShift = variantIndex * binWidth
   const selected: RoutePlace[] = []
   const used = new Set<string>()
 
   const scoreEntry = (
     entry: ScoredPlace,
     targetT: number,
-    slotInterest: string | undefined,
+    slotInterest: InterestId | undefined,
     outsideBin: boolean,
   ): number => {
     const proj = Math.min(1, Math.max(0, entry.projection))
@@ -296,7 +343,7 @@ function takeEvenlyAlongProjection(
   const pickBest = (
     candidates: ScoredPlace[],
     targetT: number,
-    slotInterest: string | undefined,
+    slotInterest: InterestId | undefined,
     outsideBin: boolean,
   ): ScoredPlace | null => {
     let best: ScoredPlace | null = null
@@ -362,7 +409,7 @@ function hasNearbySelected(place: RoutePlace, selected: RoutePlace[], minDistanc
 function takeEvenlyAroundOrigin(
   pool: ScoredPlace[],
   origin: LatLng,
-  interestIds: string[],
+  interestIds: InterestId[],
   count: number,
   variantIndex: number,
   minDistanceKm: number,
@@ -371,7 +418,7 @@ function takeEvenlyAroundOrigin(
   if (count === 0 || pool.length === 0) return []
 
   const sectorSize = 360 / count
-  const sectorOffset = (variantIndex * sectorSize) / 3
+  const sectorOffset = variantIndex * sectorSize
   const selected: RoutePlace[] = []
   const used = new Set<string>()
 
@@ -430,9 +477,10 @@ function selectLinearRoutePlaces(
 ): RoutePlace[] {
   const scored = scorePlaces(state, target, count)
   const targetKm = targetDistanceKm(target, state.transport)
+  const corridorKm = resolveCorridorKm(state, target)
   const corridor = scored.filter(
     (entry) =>
-      entry.distanceToRouteKm <= CORRIDOR_KM &&
+      entry.distanceToRouteKm <= corridorKm &&
       entry.projection >= -0.05 &&
       entry.projection <= 1.05,
   )
@@ -497,6 +545,10 @@ function buildEndpointStop(
     order,
     name: place.title,
     type: role,
+    typeGroup: 'fortresses',
+    typeGroupLabel: role,
+    interests: [],
+    primaryInterest: 'castles',
     lat: place.lat,
     lng: place.lng,
     description: place.subtitle,
@@ -509,6 +561,10 @@ function buildPlaceStop(place: RoutePlace, order: number): RouteStop {
     order,
     name: place.name,
     type: place.type,
+    typeGroup: place.typeGroup,
+    typeGroupLabel: place.typeGroupLabel,
+    interests: [...place.interests],
+    primaryInterest: primaryInterest(place.interests),
     lat: place.lat,
     lng: place.lng,
     description: place.description,
@@ -540,6 +596,10 @@ export function appendCircularFinish(
       order: stops.length + 1,
       name: origin.title,
       type: 'Финиш',
+      typeGroup: 'fortresses',
+      typeGroupLabel: 'Финиш',
+      interests: [],
+      primaryInterest: 'castles',
       lat: origin.lat,
       lng: origin.lng,
       description: origin.subtitle,
@@ -567,35 +627,45 @@ function buildInputStops(
   ]
 }
 
-async function planStops(stops: RouteStop[], circular: boolean, optimize: boolean) {
+async function planStops(
+  stops: RouteStop[],
+  circular: boolean,
+  optimize: boolean,
+  transport: WizardState['transport'],
+) {
   const waypoints = stops.map((stop) => ({ lat: stop.lat, lng: stop.lng }))
   if (optimize) {
-    return planTrip(waypoints, { roundtrip: circular })
+    return planTrip(waypoints, { roundtrip: circular, transport })
   }
-  return planRoute(waypoints)
+  return planRoute(waypoints, { transport })
 }
 
-function buildCandidateSpecs(target: RouteTarget | null, transport: WizardState['transport']): CandidateSpec[] {
+function buildCandidateSpecs(state: WizardState, target: RouteTarget | null, transport: WizardState['transport']): CandidateSpec[] {
   if (!target) {
     return DEFAULT_CANDIDATE_SPECS.map((spec, index) => ({ ...spec, scoreBias: index }))
   }
 
   const targetKm = targetDistanceKm(target, transport) ?? 0
-  if (targetKm >= LONG_TARGET_KM) {
-    const counts = desiredPoiCounts(targetKm).filter((count) => count > 0 && count <= MAX_POI_PER_ROUTE)
-    const specs: CandidateSpec[] = []
-    for (const count of counts) {
-      for (const seed of LONG_TARGET_SEEDS) {
-        specs.push({ count, seed, scoreBias: specs.length / 1000 })
-      }
-    }
-    return specs
-  }
-
+  const counts = resolveCandidateCounts(state, target).filter((count) => count > 0 && count <= MAX_POI_PER_ROUTE)
+  const seeds = targetKm >= LONG_TARGET_KM ? LONG_TARGET_SEEDS : CANDIDATE_SEEDS
   const specs: CandidateSpec[] = []
-  for (const count of desiredPoiCounts(targetKm)) {
-    for (const seed of CANDIDATE_SEEDS) {
+  for (const count of counts) {
+    for (const seed of seeds) {
       specs.push({ count, seed, scoreBias: specs.length / 1000 })
+    }
+  }
+  return specs
+}
+
+function buildEmergencyDiversitySpecs(
+  state: WizardState,
+  target: RouteTarget | null,
+): CandidateSpec[] {
+  const counts = resolveCandidateCounts(state, target).filter((count) => count > 0 && count <= MAX_POI_PER_ROUTE)
+  const specs: CandidateSpec[] = []
+  for (const seed of EMERGENCY_DIVERSE_SEEDS) {
+    for (const count of counts) {
+      specs.push({ count, seed, scoreBias: 200 + specs.length / 1000 })
     }
   }
   return specs
@@ -620,6 +690,168 @@ function stopIdsForSelection(stops: RouteStop[]): string[] {
     .filter((stop) => stop.placeId !== 'origin' && stop.placeId !== 'destination')
     .map((stop) => stop.placeId)
     .sort()
+}
+
+/** Jaccard distance between POI sets; higher means more different routes. */
+export function stopSetDistance(a: string[], b: string[]): number {
+  const setA = new Set(a)
+  const setB = new Set(b)
+  const intersection = [...setA].filter((id) => setB.has(id)).length
+  const union = new Set([...a, ...b]).size
+  if (union === 0) return 1
+
+  let distance = 1 - intersection / union
+  const isProperSubset =
+    intersection > 0 &&
+    intersection < union &&
+    (a.every((id) => setB.has(id)) || b.every((id) => setA.has(id)))
+  if (isProperSubset) {
+    distance = Math.max(0, distance - SUBSET_DISTANCE_PENALTY)
+  }
+  return distance
+}
+
+function dedupeCandidatesByStopIds<T extends RouteCandidateForSelection>(candidates: T[]): T[] {
+  const deduped: T[] = []
+  const seen = new Set<string>()
+  for (const candidate of candidates) {
+    const key = candidate.stopIds.join('|')
+    if (seen.has(key)) continue
+    seen.add(key)
+    deduped.push(candidate)
+  }
+  return deduped
+}
+
+function scoreWithinDiversityTolerance(bestScore: number, candidateScore: number, toleranceMultiplier: number): boolean {
+  if (bestScore <= 0) {
+    return candidateScore <= bestScore + Math.max(10, Math.abs(bestScore) * DIVERSITY_SCORE_TOLERANCE)
+  }
+  return candidateScore <= bestScore * toleranceMultiplier
+}
+
+/** Picks diverse route variants: best score first, then maximally different POI sets within tolerance. */
+export function selectDiverseCandidates<T extends RouteCandidateForSelection>(candidates: T[], limit: number): T[] {
+  const sorted = [...candidates].sort((a, b) => a.score - b.score)
+  const deduped = dedupeCandidatesByStopIds(sorted)
+  if (deduped.length === 0) return []
+  if (deduped.length <= limit) return deduped
+
+  const bestScore = deduped[0].score
+  const toleranceMultipliers = [1 + DIVERSITY_SCORE_TOLERANCE, 1 + DIVERSITY_SCORE_TOLERANCE + 0.15]
+  let pool = deduped
+  for (const toleranceMultiplier of toleranceMultipliers) {
+    const filtered = deduped.filter((candidate, index) =>
+      index === 0 || scoreWithinDiversityTolerance(bestScore, candidate.score, toleranceMultiplier),
+    )
+    if (filtered.length >= limit) {
+      pool = filtered
+      break
+    }
+    pool = filtered.length > 0 ? filtered : pool
+  }
+
+  const topK = pool.slice(0, Math.min(15, pool.length))
+  const first = topK[0]
+  const rest = topK.slice(1)
+
+  const minPairwiseDistance = (combo: T[]): number => {
+    let min = 1
+    for (let i = 0; i < combo.length; i++) {
+      for (let j = i + 1; j < combo.length; j++) {
+        min = Math.min(min, stopSetDistance(combo[i].stopIds, combo[j].stopIds))
+      }
+    }
+    return combo.length < 2 ? 1 : min
+  }
+
+  const averagePairwiseDistance = (combo: T[]): number => {
+    if (combo.length < 2) return 1
+    let sum = 0
+    let pairs = 0
+    for (let i = 0; i < combo.length; i++) {
+      for (let j = i + 1; j < combo.length; j++) {
+        sum += stopSetDistance(combo[i].stopIds, combo[j].stopIds)
+        pairs++
+      }
+    }
+    return pairs === 0 ? 1 : sum / pairs
+  }
+
+  let bestCombo: T[] = [first]
+  let bestMinPairwise = -1
+  let bestAvgPairwise = -1
+  let bestScoreSum = Number.POSITIVE_INFINITY
+
+  const considerCombo = (combo: T[]) => {
+    const minDistance = minPairwiseDistance(combo)
+    const avgDistance = averagePairwiseDistance(combo)
+    const scoreSum = combo.reduce((sum, candidate) => sum + candidate.score, 0)
+    if (
+      minDistance > bestMinPairwise ||
+      (minDistance === bestMinPairwise && avgDistance > bestAvgPairwise) ||
+      (minDistance === bestMinPairwise && avgDistance === bestAvgPairwise && scoreSum < bestScoreSum)
+    ) {
+      bestMinPairwise = minDistance
+      bestAvgPairwise = avgDistance
+      bestScoreSum = scoreSum
+      bestCombo = [...combo]
+    }
+  }
+
+  if (limit === 1) return [first]
+
+  const buildCombos = (start: number, combo: T[]) => {
+    if (combo.length === limit) {
+      considerCombo(combo)
+      return
+    }
+    for (let i = start; i < rest.length; i++) {
+      combo.push(rest[i])
+      buildCombos(i + 1, combo)
+      combo.pop()
+    }
+  }
+
+  buildCombos(0, [first])
+  if (bestCombo.length < limit) {
+    const selected = [...bestCombo]
+    for (const candidate of deduped) {
+      if (selected.length >= limit) break
+      if (selected.includes(candidate)) continue
+      selected.push(candidate)
+    }
+    return selected.slice(0, limit)
+  }
+  return bestCombo
+}
+
+function candidateRouteMetrics(candidate: { totalKm: number; totalMinutes: number }) {
+  return { distanceKm: candidate.totalKm, durationMinutes: candidate.totalMinutes }
+}
+
+function preferTargetAccurateCandidates<T extends RouteCandidateForSelection & {
+  totalKm: number
+  totalMinutes: number
+}>(candidates: T[], target: RouteTarget | null): T[] {
+  if (!target || candidates.length <= MIN_ROUTE_VARIANTS) return candidates
+
+  const sorted = [...candidates].sort(
+    (a, b) =>
+      routeTargetDiff(candidateRouteMetrics(a), target) +
+      routeTargetPenalty(candidateRouteMetrics(a), target) -
+      (routeTargetDiff(candidateRouteMetrics(b), target) +
+        routeTargetPenalty(candidateRouteMetrics(b), target)),
+  )
+  const bestDiff = routeTargetDiff(candidateRouteMetrics(sorted[0]), target)
+  const threshold = Math.max(bestDiff * 1.2, target.value * 0.15)
+  const nearTarget = sorted.filter((candidate) => {
+    const metrics = candidateRouteMetrics(candidate)
+    return routeTargetDiff(metrics, target) + routeTargetPenalty(metrics, target) <= threshold
+  })
+  return nearTarget.length >= MIN_ROUTE_VARIANTS
+    ? nearTarget
+    : sorted.slice(0, Math.min(15, sorted.length))
 }
 
 export function selectBestCandidates<T extends RouteCandidateForSelection>(candidates: T[], limit: number): T[] {
@@ -651,9 +883,26 @@ export function filterCandidatesByTargetUpperBound<T extends RouteCandidateForSe
   candidates: T[],
   target: RouteTarget | null,
 ): T[] {
+  return filterCandidatesByTargetBounds(candidates, target)
+}
+
+export function filterCandidatesByTargetBounds<T extends RouteCandidateForSelection & {
+  totalKm: number
+  totalMinutes: number
+}>(
+  candidates: T[],
+  target: RouteTarget | null,
+): T[] {
   if (!target) return candidates
-  const bounded = candidates.filter((candidate) => isCandidateWithinTargetUpperBound(candidate, target))
-  return bounded.length > 0 ? bounded : candidates
+  const bounded = candidates.filter((candidate) => isCandidateWithinTargetBounds(candidate, target))
+  if (bounded.length > 0) return bounded
+  return [...candidates].sort(
+    (a, b) =>
+      routeTargetDiff(candidateRouteMetrics(a), target) +
+      routeTargetPenalty(candidateRouteMetrics(a), target) -
+      (routeTargetDiff(candidateRouteMetrics(b), target) +
+        routeTargetPenalty(candidateRouteMetrics(b), target)),
+  )
 }
 
 export function isCandidateWithinTargetUpperBound(
@@ -664,6 +913,14 @@ export function isCandidateWithinTargetUpperBound(
   return value <= target.value * TARGET_UPPER_BOUND_RATIO
 }
 
+export function isCandidateWithinTargetBounds(
+  candidate: { totalKm: number; totalMinutes: number },
+  target: RouteTarget,
+): boolean {
+  const value = target.unit === 'km' ? candidate.totalKm : candidate.totalMinutes
+  return value >= target.value * TARGET_LOWER_BOUND_RATIO && value <= target.value * TARGET_UPPER_BOUND_RATIO
+}
+
 export function shouldBuildFallbackCandidates(
   candidates: { totalKm: number; totalMinutes: number }[],
   target: RouteTarget | null,
@@ -671,7 +928,7 @@ export function shouldBuildFallbackCandidates(
   return Boolean(
     target &&
       candidates.length > 0 &&
-      !candidates.some((candidate) => isCandidateWithinTargetUpperBound(candidate, target)),
+      !candidates.some((candidate) => isCandidateWithinTargetBounds(candidate, target)),
   )
 }
 
@@ -688,7 +945,7 @@ async function buildCandidate(
   const circular = isCircular(state)
   const targetKm = targetDistanceKm(target, state.transport)
   const longTarget = targetKm !== null && targetKm >= LONG_TARGET_KM
-  const minPoiCount = target ? (spec.allowLowerCount ? spec.count : minDesiredPoiCount(targetKm)) : 0
+  const minPoiCount = target ? (spec.allowLowerCount ? spec.count : minDesiredPoiCountForState(state, target)) : 0
   const primaryAttemptCounts = uniqueCounts(spec.count, Math.min(3, spec.count), minPoiCount).filter(
     (count) => count >= minPoiCount,
   )
@@ -703,7 +960,7 @@ async function buildCandidate(
     const places = count > 0 ? selectRoutePlaces(state, count, spec.seed, target) : []
     const inputStops = buildInputStops(state, places, circular && places.length > 0)
     try {
-      const trip = await planStops(inputStops, circular && places.length > 0, count > 0)
+      const trip = await planStops(inputStops, circular && places.length > 0, count > 0, state.transport)
       const targetScore = target ? routeTargetDiff(trip, target) : spec.scoreBias
       const candidateScore = targetScore + routeTargetPenalty(trip, target)
       if (candidateScore < bestScore) {
@@ -711,7 +968,7 @@ async function buildCandidate(
         bestTrip = trip
         bestScore = candidateScore
       }
-      if (!routeExceedsSoftTarget(trip, target)) break
+      if (routeMatchesTargetAcceptance(trip, target)) break
     } catch {}
   }
 
@@ -721,7 +978,7 @@ async function buildCandidate(
       const places = count > 0 ? selectRoutePlaces(state, count, spec.seed, target) : []
       const inputStops = buildInputStops(state, places, circular && places.length > 0)
       try {
-        const trip = await planStops(inputStops, circular && places.length > 0, count > 0)
+        const trip = await planStops(inputStops, circular && places.length > 0, count > 0, state.transport)
         const targetScore = target ? routeTargetDiff(trip, target) : spec.scoreBias
         const candidateScore = targetScore + routeTargetPenalty(trip, target)
         if (candidateScore < bestScore) {
@@ -729,7 +986,7 @@ async function buildCandidate(
           bestTrip = trip
           bestScore = candidateScore
         }
-        if (!routeExceedsSoftTarget(trip, target)) break
+        if (routeMatchesTargetAcceptance(trip, target)) break
       } catch {}
     }
   }
@@ -769,7 +1026,7 @@ export async function generateRoutes(state: WizardState): Promise<GenerationResu
   const target = await resolveRouteTarget(state)
 
   const candidates: BuiltCandidate[] = []
-  for (const spec of buildCandidateSpecs(target, state.transport)) {
+  for (const spec of buildCandidateSpecs(state, target, state.transport)) {
     const candidate = await buildCandidate(state, spec, target, interestLabels)
     if (candidate) candidates.push(candidate)
   }
@@ -786,13 +1043,27 @@ export async function generateRoutes(state: WizardState): Promise<GenerationResu
     if (emergency) candidates.push(emergency)
   }
 
-  const selected = selectBestCandidates(filterCandidatesByTargetUpperBound(candidates, target), MIN_ROUTE_VARIANTS)
-  if (selected.length === 0) {
-    throw new Error('Не удалось построить маршрут')
+  let boundedCandidates = filterCandidatesByTargetBounds(candidates, target)
+  boundedCandidates = preferTargetAccurateCandidates(boundedCandidates, target)
+  let selected = selectDiverseCandidates(boundedCandidates, MIN_ROUTE_VARIANTS)
+
+  if (selected.length < MIN_ROUTE_VARIANTS) {
+    const existingKeys = new Set(candidates.map((candidate) => candidate.stopIds.join('|')))
+    for (const spec of buildEmergencyDiversitySpecs(state, target)) {
+      const candidate = await buildCandidate(state, spec, target, interestLabels)
+      if (!candidate) continue
+      const key = candidate.stopIds.join('|')
+      if (existingKeys.has(key)) continue
+      existingKeys.add(key)
+      candidates.push(candidate)
+    }
+    boundedCandidates = filterCandidatesByTargetBounds(candidates, target)
+    boundedCandidates = preferTargetAccurateCandidates(boundedCandidates, target)
+    selected = selectDiverseCandidates(boundedCandidates, MIN_ROUTE_VARIANTS)
   }
 
-  while (selected.length < MIN_ROUTE_VARIANTS) {
-    selected.push(selected[selected.length % selected.length])
+  if (selected.length === 0) {
+    throw new Error('Не удалось построить маршрут')
   }
 
   return {

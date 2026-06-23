@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { completeDurationForTransport, hoursToKm, kmToHours } from './speed'
+import { completeDurationForTransport, hoursToKm, kmToHours, minutesForDistanceKm } from './speed'
 
 describe('transport speed helpers', () => {
   it('converts hours to kilometers by transport speed', () => {
@@ -23,5 +23,10 @@ describe('transport speed helpers', () => {
       hours: 5,
       km: 100,
     })
+  })
+
+  it('converts distance to minutes by transport speed', () => {
+    expect(minutesForDistanceKm(114, 'bike')).toBe(342)
+    expect(minutesForDistanceKm(114, 'car')).toBe(76)
   })
 })

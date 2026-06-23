@@ -1,7 +1,11 @@
-import type { LatLng } from '@/types'
+import type { LatLng, Transport } from '@/types'
+import { minutesForDistanceKm } from '@/lib/transport/speed'
 
-const OSRM_TRIP_ENDPOINT = '/api/osrm/trip/v1/driving'
-const OSRM_ROUTE_ENDPOINT = '/api/osrm/route/v1/driving'
+export type OsrmProfile = 'driving' | 'cycling'
+
+const OSRM_TRIP_BASE = '/api/osrm/trip/v1'
+const OSRM_ROUTE_BASE = '/api/osrm/route/v1'
+const OSRM_TABLE_BASE = '/api/osrm/table/v1'
 const POLYLINE_PRECISION = 6
 const OSRM_TIMEOUT_MS = 18000
 
@@ -34,12 +38,43 @@ type OsrmRouteResponse = {
   routes?: OsrmTrip[]
 }
 
+type OsrmTableResponse = {
+  code: string
+  message?: string
+  distances?: number[][]
+}
+
 export type PlannedTrip = {
   waypointOrder: number[]
   legMinutes: number[]
   distanceKm: number
   durationMinutes: number
   geometry: LatLng[]
+}
+
+export type PlanTripOptions = {
+  roundtrip?: boolean
+  transport?: Transport
+}
+
+export type PlanRouteOptions = {
+  transport?: Transport
+}
+
+export function osrmProfile(transport: Transport = 'car'): OsrmProfile {
+  return transport === 'bike' ? 'cycling' : 'driving'
+}
+
+function tripEndpoint(transport: Transport = 'car'): string {
+  return `${OSRM_TRIP_BASE}/${osrmProfile(transport)}`
+}
+
+function routeEndpoint(transport: Transport = 'car'): string {
+  return `${OSRM_ROUTE_BASE}/${osrmProfile(transport)}`
+}
+
+function tableEndpoint(transport: Transport = 'car'): string {
+  return `${OSRM_TABLE_BASE}/${osrmProfile(transport)}`
 }
 
 function decodePolyline(value: string, precision = POLYLINE_PRECISION): LatLng[] {
@@ -94,21 +129,39 @@ async function fetchWithTimeout(url: string, timeoutMs = OSRM_TIMEOUT_MS): Promi
   }
 }
 
-function tripToPlannedRoute(route: OsrmTrip, waypointOrder: number[]): PlannedTrip {
+function legMinutesFromOsrm(leg: OsrmLeg, transport: Transport): number {
+  if (transport === 'bike') {
+    return minutesForDistanceKm(leg.distance / 1000, transport)
+  }
+  return Math.max(1, Math.round(leg.duration / 60))
+}
+
+export function plannedTripFromOsrmRoute(
+  route: OsrmTrip,
+  waypointOrder: number[],
+  transport: Transport = 'car',
+): PlannedTrip {
+  const legMinutes = route.legs.map((leg) => legMinutesFromOsrm(leg, transport))
+  const durationMinutes =
+    transport === 'bike'
+      ? Math.max(1, legMinutes.reduce((sum, minutes) => sum + minutes, 0))
+      : Math.max(1, Math.round(route.duration / 60))
+
   return {
     waypointOrder,
-    legMinutes: route.legs.map((leg) => Math.max(1, Math.round(leg.duration / 60))),
+    legMinutes,
     distanceKm: Math.max(1, Math.round(route.distance / 100) / 10),
-    durationMinutes: Math.max(1, Math.round(route.duration / 60)),
+    durationMinutes,
     geometry: decodePolyline(route.geometry),
   }
 }
 
-export async function planTrip(waypoints: LatLng[], options: { roundtrip?: boolean } = {}): Promise<PlannedTrip> {
+export async function planTrip(waypoints: LatLng[], options: PlanTripOptions = {}): Promise<PlannedTrip> {
   if (waypoints.length < 2) {
     throw new Error('Для построения маршрута нужны минимум две точки')
   }
 
+  const transport = options.transport ?? 'car'
   const coordinates = waypoints.map((point) => `${point.lng},${point.lat}`).join(';')
   const params = new URLSearchParams({
     geometries: 'polyline6',
@@ -124,7 +177,7 @@ export async function planTrip(waypoints: LatLng[], options: { roundtrip?: boole
     params.set('destination', 'last')
   }
 
-  const response = await fetchWithTimeout(`${OSRM_TRIP_ENDPOINT}/${coordinates}?${params.toString()}`)
+  const response = await fetchWithTimeout(`${tripEndpoint(transport)}/${coordinates}?${params.toString()}`)
   if (!response.ok) {
     throw new Error('OSRM недоступен')
   }
@@ -143,14 +196,44 @@ export async function planTrip(waypoints: LatLng[], options: { roundtrip?: boole
     .sort((a, b) => a.order - b.order)
     .map((waypoint) => waypoint.inputIndex)
 
-  return tripToPlannedRoute(trip, waypointOrder)
+  return plannedTripFromOsrmRoute(trip, waypointOrder, transport)
 }
 
-export async function planRoute(waypoints: LatLng[]): Promise<PlannedTrip> {
+/** Дорожные расстояния (м) от первой точки до каждой из остальных. */
+export async function fetchTableDistancesMeters(
+  waypoints: LatLng[],
+  transport: Transport = 'car',
+): Promise<number[]> {
+  if (waypoints.length < 2) return []
+
+  const coordinates = waypoints.map((point) => `${point.lng},${point.lat}`).join(';')
+  const destinations = waypoints.map((_, index) => index).slice(1).join(';')
+  const params = new URLSearchParams({
+    sources: '0',
+    destinations,
+    annotations: 'distance',
+  })
+
+  const response = await fetchWithTimeout(`${tableEndpoint(transport)}/${coordinates}?${params.toString()}`)
+  if (!response.ok) {
+    throw new Error('OSRM недоступен')
+  }
+
+  const data = (await response.json()) as OsrmTableResponse
+  const row = data.distances?.[0]
+  if (data.code !== 'Ok' || !row || row.length !== waypoints.length - 1) {
+    throw new Error(data.message || 'Не удалось рассчитать расстояния')
+  }
+
+  return row
+}
+
+export async function planRoute(waypoints: LatLng[], options: PlanRouteOptions = {}): Promise<PlannedTrip> {
   if (waypoints.length < 2) {
     throw new Error('Для построения маршрута нужны минимум две точки')
   }
 
+  const transport = options.transport ?? 'car'
   const coordinates = waypoints.map((point) => `${point.lng},${point.lat}`).join(';')
   const params = new URLSearchParams({
     geometries: 'polyline6',
@@ -158,7 +241,7 @@ export async function planRoute(waypoints: LatLng[]): Promise<PlannedTrip> {
     steps: 'false',
   })
 
-  const response = await fetchWithTimeout(`${OSRM_ROUTE_ENDPOINT}/${coordinates}?${params.toString()}`)
+  const response = await fetchWithTimeout(`${routeEndpoint(transport)}/${coordinates}?${params.toString()}`)
   if (!response.ok) {
     throw new Error('OSRM недоступен')
   }
@@ -169,5 +252,5 @@ export async function planRoute(waypoints: LatLng[]): Promise<PlannedTrip> {
     throw new Error(data.message || 'Не удалось построить маршрут')
   }
 
-  return tripToPlannedRoute(route, waypoints.map((_, index) => index))
+  return plannedTripFromOsrmRoute(route, waypoints.map((_, index) => index), transport)
 }
