@@ -3,6 +3,8 @@
 PWA для планирования автопутешествий по Беларуси: генерация маршрутов и трекер «был здесь».
 
 - **UI spec (implementation):** [docs/ui/](docs/ui/) — канон для реализованных экранов
+- **API contract (v1):** [docs/api.md](docs/api.md) — auth, trips, visited (бэк ещё не реализован)
+- **POI / routing data:** [docs/DATA-POI.md](docs/DATA-POI.md)
 - **Figma (новые / redesign):** [Vandrounik-design](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=64-208)
 
 ## Стек
@@ -16,21 +18,27 @@ PWA для планирования автопутешествий по Бела
 
 ```bash
 npm install
-npm run dev
+npm --prefix server install
+npm --prefix server run dev   # API :8787
+npm run dev                   # Vite :5173 (проксирует /api/v1)
 ```
 
 Открыть `http://localhost:5173`. Viewport — **360×800**; на десктопе экран центрируется как «телефон».
+
+Вход: email → код. В dev без Resend код в логе API (по умолчанию `0000`). Подробнее: [server/README.md](server/README.md), контракт [docs/api.md](docs/api.md).
 
 ## Скрипты
 
 | Команда | Что делает |
 |---------|------------|
 | `npm run dev` | Dev-сервер Vite |
+| `npm run dev:server` | API (Hono) на :8787 |
 | `npm run build` | Type-check + production-сборка |
 | `npm run lint` | ESLint |
 | `npm run test` | Vitest |
 | `npm run preview` | Превью production-сборки |
 | `npm run import:osm-belarus` | Импорт POI из OSM |
+| `npm run enrich:place-images` | Превью фото мест (Wikidata/Commons) |
 
 ## Реализованный flow (v1)
 
@@ -55,7 +63,7 @@ A0 Auth email (/)
                           → E3  Детали        overlay  /plan/results/:variantId (deep-link)
 ```
 
-Авторизация пока **mock** (`localStorage`): email (+ валидация красным под полем) → код (≥4 символа), либо «Войти через Google». Authenticated routes закрыты без сессии. Нижнее меню (Создать / Мои маршруты / Профиль) — только на корневых табах. Подробнее: [docs/ui/navigation.md](docs/ui/navigation.md).
+Авторизация: email + код через API ([docs/api.md](docs/api.md)); в UI Google пока «скоро». Authenticated routes закрыты без сессии. Нижнее меню (Создать / Мои маршруты / Профиль) — только на корневых табах. Подробнее: [docs/ui/navigation.md](docs/ui/navigation.md).
 
 ### Экраны
 
@@ -90,7 +98,7 @@ A0 Auth email (/)
 
 ### Состояние
 
-- Auth (mock): `src/lib/storage/auth.ts` → `vandrounik.auth.session.v1` / `vandrounik.auth.pending.v1`
+- Auth: API ([server/](server/), [docs/api.md](docs/api.md)); локальный кэш сессии `vandrounik.auth.session.v1`
 - Wizard: `src/store/wizard.tsx` → `localStorage` `vandrounik.wizard.v1`
 - Результат генерации: `src/lib/storage/generation.ts` → `vandrounik.generation.v3`
 - Сохранённые поездки: `src/lib/storage/trips.ts` → `vandrounik.trips.v1`
@@ -102,5 +110,7 @@ A0 Auth email (/)
 
 ## Не реализовано (v2+)
 
-- Каталог (E7); удаление аккаунта / CDN аватаров
+- Google OAuth; удаление аккаунта / CDN аватаров
+- Каталог (E7)
 - Push, шаринг маршрута
+- Деплой / свой домен для Resend

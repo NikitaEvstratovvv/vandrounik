@@ -166,21 +166,23 @@ export function TripRoutePanel({ trip, onClose, onTripChange, onDeleted }: TripR
       const visited = tripVisitedIds(next)
       const allDone = places.every((s) => visited.has(s.placeId))
       if (allDone && tripStatus(next) === 'in-progress') {
-        const completed = setTripStatus(next.id, 'completed')
-        if (completed) {
-          onTripChange(completed)
-          showCompleted()
-        }
+        void setTripStatus(next.id, 'completed').then((completed) => {
+          if (completed) {
+            onTripChange(completed)
+            showCompleted()
+          }
+        })
       }
     },
     [onTripChange, showCompleted],
   )
 
   const handleToggleVisited = (placeId: string) => {
-    const next = toggleTripVisited(trip.id, placeId)
-    if (!next) return
-    onTripChange(next)
-    checkCompletion(next)
+    void toggleTripVisited(trip.id, placeId).then((next) => {
+      if (!next) return
+      onTripChange(next)
+      checkCompletion(next)
+    })
   }
 
   const handleMarkFromSheet = () => {
@@ -190,22 +192,25 @@ export function TripRoutePanel({ trip, onClose, onTripChange, onDeleted }: TripR
   }
 
   const handleStart = () => {
-    const next = setTripStatus(trip.id, 'in-progress')
-    if (next) onTripChange(next)
+    void setTripStatus(trip.id, 'in-progress').then((next) => {
+      if (next) onTripChange(next)
+    })
   }
 
   const handleDelete = () => {
-    deleteTrip(trip.id)
-    setDeleteOpen(false)
-    setManageOpen(false)
-    onDeleted()
+    void deleteTrip(trip.id).then(() => {
+      setDeleteOpen(false)
+      setManageOpen(false)
+      onDeleted()
+    })
   }
 
   const handleCancel = () => {
-    const next = cancelTrip(trip.id)
-    setCancelOpen(false)
-    setManageOpen(false)
-    if (next) onTripChange(next)
+    void cancelTrip(trip.id).then((next) => {
+      setCancelOpen(false)
+      setManageOpen(false)
+      if (next) onTripChange(next)
+    })
   }
 
   const segmented = (

@@ -7,6 +7,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+      '/api/v1': {
+        target: 'http://localhost:8787',
+        changeOrigin: true,
+      },
       '/api/nominatim': {
         target: 'https://nominatim.openstreetmap.org',
         changeOrigin: true,

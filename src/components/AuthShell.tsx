@@ -221,13 +221,14 @@ export function AuthForm({ onSubmit, children }: AuthFormProps) {
 
 type AuthSubmitProps = {
   children?: ReactNode
+  disabled?: boolean
 }
 
 /**
  * Primary «Войти» — 1:1 Figma 320:1698:
  * primary fill, h=48, radius 20, shadow btn, без disabled-opacity в макете.
  */
-export function AuthSubmit({ children = 'Войти' }: AuthSubmitProps) {
+export function AuthSubmit({ children = 'Войти', disabled = false }: AuthSubmitProps) {
   return (
     <chakra.button
       type="submit"
@@ -247,9 +248,11 @@ export function AuthSubmit({ children = 'Войти' }: AuthSubmitProps) {
       lineHeight="base"
       borderRadius="card"
       boxShadow="btn"
-      cursor="pointer"
+      cursor={disabled ? 'default' : 'pointer'}
+      opacity={disabled ? 0.5 : 1}
+      disabled={disabled}
       transition="opacity 150ms"
-      _hover={{ opacity: 0.85 }}
+      _hover={disabled ? undefined : { opacity: 0.85 }}
     >
       {children}
     </chakra.button>

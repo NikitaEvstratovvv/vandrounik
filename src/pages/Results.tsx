@@ -90,10 +90,10 @@ export function ResultsPanel({ onClose, onRouteSaved }: ResultsPanelProps) {
     if (!snapshot || snapshot.variants.length === 0) return
     const variant = snapshot.variants[variantIndex] ?? snapshot.variants[0]
     if (!variant) return
-    const trip = saveTrip(variant, snapshot.params)
-    // Open E4 first so success UI is not lost if sheet exit races.
-    onRouteSaved(trip)
-    closeRouteSheet()
+    void saveTrip(variant, snapshot.params).then((trip) => {
+      onRouteSaved(trip)
+      closeRouteSheet()
+    })
   }
 
   if (!generation || generation.variants.length === 0) {

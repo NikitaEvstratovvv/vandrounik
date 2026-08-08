@@ -1,4 +1,5 @@
 import type { GenerationParams, RouteVariant } from '@/types'
+import { apiFetch, getAccessToken } from '@/lib/api/client'
 import { markPlaceVisited } from '@/lib/storage/visited'
 
 const STORAGE_KEY = 'vandrounik.trips.v1'
@@ -10,10 +11,19 @@ export type SavedTrip = {
   variant: RouteVariant
   params: GenerationParams | null
   savedAt: string
-  /** Figma card badge: new (no badge) / in-progress («В пути») / completed («Завершен»). */
   status?: TripStatus
-  /** Per-trip «Был здесь» progress (POI placeIds). */
   visitedPlaceIds?: string[]
+  updatedAt?: string
+}
+
+type ApiTrip = {
+  id: string
+  status: TripStatus
+  visitedPlaceIds: string[]
+  variant: RouteVariant
+  params: GenerationParams | null
+  savedAt: string
+  updatedAt: string
 }
 
 function isTripStatus(value: unknown): value is TripStatus {
@@ -26,7 +36,6 @@ function normalizeVisitedIds(value: unknown): string[] | undefined {
   return ids.length > 0 ? ids : []
 }
 
-/** Drop heavy OSRM polyline so trips fit in localStorage; map falls back to stop line. */
 function slimVariant(variant: RouteVariant): RouteVariant {
   return {
     id: variant.id,
@@ -35,6 +44,18 @@ function slimVariant(variant: RouteVariant): RouteVariant {
     totalKm: variant.totalKm,
     totalMinutes: variant.totalMinutes,
     interestLabels: variant.interestLabels,
+  }
+}
+
+function fromApiTrip(trip: ApiTrip): SavedTrip {
+  return {
+    id: trip.id,
+    variant: trip.variant,
+    params: trip.params,
+    savedAt: trip.savedAt,
+    status: trip.status,
+    visitedPlaceIds: trip.visitedPlaceIds ?? [],
+    updatedAt: trip.updatedAt,
   }
 }
 
@@ -57,7 +78,6 @@ function readTrips(): SavedTrip[] {
   }
 }
 
-/** Returns false if localStorage write failed (quota / private mode). */
 function writeTrips(trips: SavedTrip[]): boolean {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(trips))
@@ -67,15 +87,8 @@ function writeTrips(trips: SavedTrip[]): boolean {
   }
 }
 
-function updateTrip(id: string, patch: (trip: SavedTrip) => SavedTrip): SavedTrip | null {
-  const trips = readTrips()
-  const index = trips.findIndex((t) => t.id === id)
-  if (index < 0) return null
-  const updated = patch(trips[index])
-  const next = [...trips]
-  next[index] = updated
-  if (!writeTrips(next)) return null
-  return updated
+function useRemote(): boolean {
+  return Boolean(getAccessToken())
 }
 
 function newTripId(): string {
@@ -85,15 +98,42 @@ function newTripId(): string {
   return `trip-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 }
 
+function cacheUpsert(trip: SavedTrip): void {
+  const rest = readTrips().filter((t) => t.id !== trip.id)
+  writeTrips([trip, ...rest].sort((a, b) => (a.savedAt < b.savedAt ? 1 : -1)))
+}
+
+function cacheRemove(id: string): void {
+  writeTrips(readTrips().filter((t) => t.id !== id))
+}
+
+/** Sync read from cache (filled by refreshTrips / mutations). */
 export function loadTrips(): SavedTrip[] {
   return readTrips()
 }
 
-/**
- * Always appends a new trip (unique id). Slot `variant.id` is kept on the variant only.
- * Пишет в localStorage; при QuotaExceeded повторяет без geometry.
- */
-export function saveTrip(variant: RouteVariant, params: GenerationParams | null = null): SavedTrip {
+export async function refreshTrips(): Promise<SavedTrip[]> {
+  if (!useRemote()) return readTrips()
+  const data = await apiFetch<{ trips: ApiTrip[] }>('/trips')
+  const trips = data.trips.map(fromApiTrip)
+  writeTrips(trips)
+  return trips
+}
+
+export async function saveTrip(
+  variant: RouteVariant,
+  params: GenerationParams | null = null,
+): Promise<SavedTrip> {
+  if (useRemote()) {
+    const created = await apiFetch<ApiTrip>('/trips', {
+      method: 'POST',
+      body: JSON.stringify({ variant: slimVariant(variant), params }),
+    })
+    const trip = fromApiTrip(created)
+    cacheUpsert(trip)
+    return trip
+  }
+
   const existing = readTrips()
   const id = newTripId()
   const base = {
@@ -102,12 +142,8 @@ export function saveTrip(variant: RouteVariant, params: GenerationParams | null 
     savedAt: new Date().toISOString(),
     status: 'new' as TripStatus,
   }
-
   const full: SavedTrip = { ...base, variant }
-  if (writeTrips([full, ...existing]) && getTrip(id)) {
-    return full
-  }
-
+  if (writeTrips([full, ...existing]) && getTrip(id)) return full
   const slim: SavedTrip = { ...base, variant: slimVariant(variant) }
   writeTrips([slim, ...existing])
   return slim
@@ -117,15 +153,52 @@ export function getTrip(id: string): SavedTrip | null {
   return readTrips().find((t) => t.id === id) ?? null
 }
 
-export function deleteTrip(id: string): boolean {
+export async function fetchTrip(id: string): Promise<SavedTrip | null> {
+  if (!useRemote()) return getTrip(id)
+  try {
+    const trip = await apiFetch<ApiTrip>(`/trips/${encodeURIComponent(id)}`)
+    const saved = fromApiTrip(trip)
+    cacheUpsert(saved)
+    return saved
+  } catch {
+    return getTrip(id)
+  }
+}
+
+export async function deleteTrip(id: string): Promise<boolean> {
+  if (useRemote()) {
+    try {
+      await apiFetch(`/trips/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      cacheRemove(id)
+      return true
+    } catch {
+      return false
+    }
+  }
   const trips = readTrips()
   const next = trips.filter((t) => t.id !== id)
   if (next.length === trips.length) return false
   return writeTrips(next)
 }
 
-export function setTripStatus(id: string, status: TripStatus): SavedTrip | null {
-  return updateTrip(id, (trip) => ({ ...trip, status }))
+export async function setTripStatus(id: string, status: TripStatus): Promise<SavedTrip | null> {
+  if (useRemote()) {
+    const trip = await apiFetch<ApiTrip>(`/trips/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    })
+    const saved = fromApiTrip(trip)
+    cacheUpsert(saved)
+    return saved
+  }
+  const trips = readTrips()
+  const index = trips.findIndex((t) => t.id === id)
+  if (index < 0) return null
+  const updated = { ...trips[index], status }
+  const next = [...trips]
+  next[index] = updated
+  if (!writeTrips(next)) return null
+  return updated
 }
 
 export function tripStatus(trip: SavedTrip): TripStatus {
@@ -136,28 +209,98 @@ export function tripVisitedIds(trip: SavedTrip): Set<string> {
   return new Set(normalizeVisitedIds(trip.visitedPlaceIds) ?? [])
 }
 
-/**
- * Toggle per-trip visited. Marking visited also writes to global visited (Profile).
- * Unvisit clears only the trip list — global stays.
- */
-export function toggleTripVisited(tripId: string, placeId: string): SavedTrip | null {
-  return updateTrip(tripId, (trip) => {
-    const ids = new Set(normalizeVisitedIds(trip.visitedPlaceIds) ?? [])
-    if (ids.has(placeId)) {
-      ids.delete(placeId)
-    } else {
-      ids.add(placeId)
-      markPlaceVisited(placeId)
-    }
-    return { ...trip, visitedPlaceIds: [...ids] }
-  })
+export async function toggleTripVisited(tripId: string, placeId: string): Promise<SavedTrip | null> {
+  const trip = getTrip(tripId)
+  if (!trip) return null
+  const ids = new Set(normalizeVisitedIds(trip.visitedPlaceIds) ?? [])
+  if (ids.has(placeId)) ids.delete(placeId)
+  else {
+    ids.add(placeId)
+    await markPlaceVisited(placeId)
+  }
+  const visitedPlaceIds = [...ids]
+
+  if (useRemote()) {
+    const updated = await apiFetch<ApiTrip>(`/trips/${encodeURIComponent(tripId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ visitedPlaceIds }),
+    })
+    const saved = fromApiTrip(updated)
+    cacheUpsert(saved)
+    return saved
+  }
+
+  const trips = readTrips()
+  const index = trips.findIndex((t) => t.id === tripId)
+  if (index < 0) return null
+  const nextTrip = { ...trips[index], visitedPlaceIds }
+  const next = [...trips]
+  next[index] = nextTrip
+  if (!writeTrips(next)) return null
+  return nextTrip
 }
 
-/** Cancel in-progress trip: status → new, clear trip visited progress. */
-export function cancelTrip(id: string): SavedTrip | null {
-  return updateTrip(id, (trip) => ({
-    ...trip,
-    status: 'new',
-    visitedPlaceIds: [],
-  }))
+export async function cancelTrip(id: string): Promise<SavedTrip | null> {
+  if (useRemote()) {
+    const trip = await apiFetch<ApiTrip>(`/trips/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'new', visitedPlaceIds: [] }),
+    })
+    const saved = fromApiTrip(trip)
+    cacheUpsert(saved)
+    return saved
+  }
+  const trips = readTrips()
+  const index = trips.findIndex((t) => t.id === id)
+  if (index < 0) return null
+  const updated = { ...trips[index], status: 'new' as TripStatus, visitedPlaceIds: [] }
+  const next = [...trips]
+  next[index] = updated
+  if (!writeTrips(next)) return null
+  return updated
+}
+
+/** Push local trips/visited to server once per user, then refresh cache. */
+export async function syncProfileDataAfterLogin(userId: string): Promise<void> {
+  if (!useRemote()) return
+  const flagKey = `vandrounik.sync.done.v1.${userId}`
+  let already = false
+  try {
+    already = localStorage.getItem(flagKey) === '1'
+  } catch {
+    already = false
+  }
+
+  if (!already) {
+    const localTrips = readTrips()
+    if (localTrips.length > 0) {
+      await apiFetch<{ trips: ApiTrip[] }>('/trips/import', {
+        method: 'POST',
+        body: JSON.stringify({
+          trips: localTrips.map((t) => ({
+            id: t.id,
+            status: tripStatus(t),
+            visitedPlaceIds: [...tripVisitedIds(t)],
+            variant: slimVariant(t.variant),
+            params: t.params,
+            savedAt: t.savedAt,
+          })),
+        }),
+      })
+    }
+    const { loadVisitedPlaceIdsLocal, replaceVisitedRemote } = await import('@/lib/storage/visited')
+    const localVisited = [...loadVisitedPlaceIdsLocal()]
+    if (localVisited.length > 0) {
+      await replaceVisitedRemote(localVisited)
+    }
+    try {
+      localStorage.setItem(flagKey, '1')
+    } catch {
+      // ignore
+    }
+  }
+
+  await refreshTrips()
+  const { refreshVisited } = await import('@/lib/storage/visited')
+  await refreshVisited()
 }

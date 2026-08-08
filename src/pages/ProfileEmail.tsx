@@ -113,9 +113,10 @@ function ProfileEmailCodeForm({ onBack }: { onBack: () => void }) {
 
   const submit = () => {
     if (!canSubmit) return
-    updateSession({ email: pending.email })
-    clearEmailChangePending()
-    navigate('/profile/settings/email/done', { replace: true })
+    void updateSession({ email: pending.email }).then(() => {
+      clearEmailChangePending()
+      navigate('/profile/settings/email/done', { replace: true })
+    })
   }
 
   return (

@@ -58,9 +58,9 @@ describe('auth session profile fields', () => {
     expect(loadSession()?.displayName).toBe('nikita')
   })
 
-  it('updates displayName, email, and avatar', () => {
+  it('updates displayName, email, and avatar', async () => {
     createEmailSession('a@b.co')
-    const next = updateSession({
+    const next = await updateSession({
       displayName: 'Vandro',
       email: 'new@mail.com',
       avatar: { kind: 'preset', id: 'fox' },

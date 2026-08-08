@@ -8,7 +8,7 @@ import { SlideOverlay } from '@/components/SlideOverlay'
 import { TAB_BAR_HEIGHT } from '@/components/TabBar'
 import { TripCard } from '@/components/TripCard'
 import { useTabChrome } from '@/components/tab-chrome'
-import { getTrip, loadTrips, type SavedTrip } from '@/lib/storage/trips'
+import { fetchTrip, getTrip, loadTrips, refreshTrips, type SavedTrip } from '@/lib/storage/trips'
 import { TripRoutePanel } from '@/pages/TripRoute'
 
 /** E5 — Мои маршруты. Figma 272:1124 (empty) / 272:1309 (list). */
@@ -28,18 +28,20 @@ export function Trips() {
   )
 
   useEffect(() => {
-    setTrips(loadTrips())
+    void refreshTrips().then(setTrips)
   }, [location.pathname, location.key])
 
   useEffect(() => {
     if (!isDetail || !detailId) return
-    const trip = getTrip(detailId)
-    if (trip) {
-      setActiveTrip(trip)
-      setDetailOpen(true)
-    } else {
-      navigate('/trips', { replace: true })
-    }
+    void (async () => {
+      const trip = (await fetchTrip(detailId)) ?? getTrip(detailId)
+      if (trip) {
+        setActiveTrip(trip)
+        setDetailOpen(true)
+      } else {
+        navigate('/trips', { replace: true })
+      }
+    })()
   }, [isDetail, detailId, navigate])
 
   const openDetail = (trip: SavedTrip) => {
@@ -59,7 +61,7 @@ export function Trips() {
 
   const handleDetailExited = () => {
     setActiveTrip(null)
-    setTrips(loadTrips())
+    void refreshTrips().then(setTrips)
     if (isDetail) {
       navigate('/trips', { replace: true })
     }
@@ -72,7 +74,7 @@ export function Trips() {
 
   const handleTripDeleted = () => {
     setDetailOpen(false)
-    setTrips(loadTrips())
+    void refreshTrips().then(setTrips)
   }
 
   const detailPresent = isDetail || detailOpen

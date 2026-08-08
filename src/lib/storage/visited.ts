@@ -1,3 +1,5 @@
+import { apiFetch, getAccessToken } from '@/lib/api/client'
+
 const STORAGE_KEY = 'vandrounik.visited-places.v1'
 
 function readIds(): string[] {
@@ -15,30 +17,74 @@ function writeIds(ids: string[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(ids))
   } catch {
-    // localStorage недоступен — игнорируем.
+    // ignore
   }
+}
+
+function useRemote(): boolean {
+  return Boolean(getAccessToken())
+}
+
+/** Local-only read (for import). */
+export function loadVisitedPlaceIdsLocal(): Set<string> {
+  return new Set(readIds())
 }
 
 export function loadVisitedPlaceIds(): Set<string> {
   return new Set(readIds())
 }
 
+export async function refreshVisited(): Promise<Set<string>> {
+  if (!useRemote()) return loadVisitedPlaceIds()
+  const data = await apiFetch<{ placeIds: string[] }>('/visited')
+  writeIds(data.placeIds)
+  return new Set(data.placeIds)
+}
+
+export async function replaceVisitedRemote(placeIds: string[]): Promise<Set<string>> {
+  const data = await apiFetch<{ placeIds: string[] }>('/visited', {
+    method: 'PUT',
+    body: JSON.stringify({ placeIds }),
+  })
+  writeIds(data.placeIds)
+  return new Set(data.placeIds)
+}
+
 export function isPlaceVisited(placeId: string): boolean {
   return loadVisitedPlaceIds().has(placeId)
 }
 
-/** Добавляет место в глобальный список посещённых (idempotent). */
-export function markPlaceVisited(placeId: string): void {
+export async function markPlaceVisited(placeId: string): Promise<void> {
+  if (useRemote()) {
+    const data = await apiFetch<{ placeIds: string[] }>(`/visited/${encodeURIComponent(placeId)}`, {
+      method: 'POST',
+    })
+    writeIds(data.placeIds)
+    return
+  }
   const ids = new Set(readIds())
   if (ids.has(placeId)) return
   ids.add(placeId)
   writeIds([...ids])
 }
 
-/** Переключает отметку «был здесь»; возвращает новое состояние. */
-export function toggleVisitedPlace(placeId: string): boolean {
+export async function toggleVisitedPlace(placeId: string): Promise<boolean> {
   const ids = new Set(readIds())
-  if (ids.has(placeId)) {
+  const currently = ids.has(placeId)
+
+  if (useRemote()) {
+    const data = currently
+      ? await apiFetch<{ placeIds: string[] }>(`/visited/${encodeURIComponent(placeId)}`, {
+          method: 'DELETE',
+        })
+      : await apiFetch<{ placeIds: string[] }>(`/visited/${encodeURIComponent(placeId)}`, {
+          method: 'POST',
+        })
+    writeIds(data.placeIds)
+    return data.placeIds.includes(placeId)
+  }
+
+  if (currently) {
     ids.delete(placeId)
     writeIds([...ids])
     return false

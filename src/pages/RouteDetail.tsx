@@ -52,18 +52,20 @@ export function RouteDetailPanel({
   }, [generation, variant, variantId, navigate, variantProp])
 
   const handleToggleVisited = useCallback((placeId: string) => {
-    toggleVisitedPlace(placeId)
-    setVisitedIds(loadVisitedPlaceIds())
+    void toggleVisitedPlace(placeId).then(() => {
+      setVisitedIds(loadVisitedPlaceIds())
+    })
   }, [])
 
   const handleSave = useCallback(() => {
     if (!variant) return
-    const trip = saveTrip(variant, generation?.params ?? null)
-    if (onRouteSaved) {
-      onRouteSaved(trip)
-      return
-    }
-    navigate(`/trips/${encodeURIComponent(trip.id)}`)
+    void saveTrip(variant, generation?.params ?? null).then((trip) => {
+      if (onRouteSaved) {
+        onRouteSaved(trip)
+        return
+      }
+      navigate(`/trips/${encodeURIComponent(trip.id)}`)
+    })
   }, [variant, generation?.params, onRouteSaved, navigate])
 
   const handleStopSelect = useCallback((placeId: string) => {

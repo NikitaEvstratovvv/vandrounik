@@ -6,7 +6,7 @@ import { SlideOverlay } from '@/components/SlideOverlay'
 import { TAB_BAR_HEIGHT } from '@/components/TabBar'
 import { useTabChrome } from '@/components/tab-chrome'
 import { clearSession, loadSession } from '@/lib/storage/auth'
-import { loadVisitedPlaceIds } from '@/lib/storage/visited'
+import { loadVisitedPlaceIds, refreshVisited } from '@/lib/storage/visited'
 import { loadGeneration } from '@/lib/storage/generation'
 import { avatarSrc } from '@/lib/profile/avatar'
 import { ProfileSettingsPanel } from '@/pages/ProfileSettings'
@@ -31,8 +31,12 @@ export function Profile() {
   const { setForceHidden } = useTabChrome()
   const session = loadSession()
 
-  const placesSeen = useMemo(() => loadVisitedPlaceIds().size, [])
+  const [placesSeen, setPlacesSeen] = useState(() => loadVisitedPlaceIds().size)
   const routesCreated = useMemo(() => (loadGeneration() ? 1 : 0), [])
+
+  useEffect(() => {
+    void refreshVisited().then((ids) => setPlacesSeen(ids.size))
+  }, [location.pathname])
 
   const isSettingsStack = isSettingsStackPath(location.pathname)
   const isPhoto = location.pathname === '/profile/settings/photo'

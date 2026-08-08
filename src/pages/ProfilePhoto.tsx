@@ -39,8 +39,7 @@ export function ProfilePhotoPanel({ onClose }: ProfilePhotoPanelProps) {
 
   const save = () => {
     if (!dirty) return
-    updateSession({ avatar: draft })
-    onClose()
+    void updateSession({ avatar: draft }).then(() => onClose())
   }
 
   const isSelectedPreset = (id: string) => draft.kind === 'preset' && draft.id === id

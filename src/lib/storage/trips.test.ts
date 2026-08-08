@@ -70,9 +70,9 @@ afterEach(() => {
 })
 
 describe('trips storage', () => {
-  it('appends a new trip with unique id even for the same variant.id', () => {
-    const first = saveTrip(variant('variant-1', 'One'))
-    const second = saveTrip(variant('variant-1', 'One updated'))
+  it('appends a new trip with unique id even for the same variant.id', async () => {
+    const first = await saveTrip(variant('variant-1', 'One'))
+    const second = await saveTrip(variant('variant-1', 'One updated'))
 
     expect(first.id).not.toBe('variant-1')
     expect(second.id).not.toBe(first.id)
@@ -87,53 +87,53 @@ describe('trips storage', () => {
     expect(getTrip(second.id)?.variant.title).toBe('One updated')
   })
 
-  it('prepends newest trip', () => {
-    const a = saveTrip(variant('v1', 'One'))
-    const b = saveTrip(variant('v2', 'Two'))
+  it('prepends newest trip', async () => {
+    const a = await saveTrip(variant('v1', 'One'))
+    const b = await saveTrip(variant('v2', 'Two'))
     expect(loadTrips().map((t) => t.id)).toEqual([b.id, a.id])
   })
 
-  it('defaults status to new on each save', () => {
-    const first = saveTrip(variant('v1', 'One'))
+  it('defaults status to new on each save', async () => {
+    const first = await saveTrip(variant('v1', 'One'))
     expect(first.status).toBe('new')
 
-    setTripStatus(first.id, 'in-progress')
-    const again = saveTrip(variant('v1', 'One updated'))
+    await setTripStatus(first.id, 'in-progress')
+    const again = await saveTrip(variant('v1', 'One updated'))
     expect(again.status).toBe('new')
     expect(getTrip(first.id)?.status).toBe('in-progress')
   })
 
-  it('toggles per-trip visited and syncs global on mark only', () => {
-    const trip = saveTrip(variant('v1', 'One'))
-    toggleTripVisited(trip.id, 'a')
+  it('toggles per-trip visited and syncs global on mark only', async () => {
+    const trip = await saveTrip(variant('v1', 'One'))
+    await toggleTripVisited(trip.id, 'a')
     expect(tripVisitedIds(getTrip(trip.id)!).has('a')).toBe(true)
     expect(loadVisitedPlaceIds().has('a')).toBe(true)
 
-    toggleTripVisited(trip.id, 'a')
+    await toggleTripVisited(trip.id, 'a')
     expect(tripVisitedIds(getTrip(trip.id)!).has('a')).toBe(false)
     expect(loadVisitedPlaceIds().has('a')).toBe(true)
   })
 
-  it('deletes a trip', () => {
-    const a = saveTrip(variant('v1', 'One'))
-    const b = saveTrip(variant('v2', 'Two'))
-    expect(deleteTrip(a.id)).toBe(true)
+  it('deletes a trip', async () => {
+    const a = await saveTrip(variant('v1', 'One'))
+    const b = await saveTrip(variant('v2', 'Two'))
+    expect(await deleteTrip(a.id)).toBe(true)
     expect(loadTrips().map((t) => t.id)).toEqual([b.id])
-    expect(deleteTrip('missing')).toBe(false)
+    expect(await deleteTrip('missing')).toBe(false)
   })
 
-  it('cancels trip: status new and clears visited', () => {
-    const trip = saveTrip(variant('v1', 'One'))
-    setTripStatus(trip.id, 'in-progress')
-    toggleTripVisited(trip.id, 'a')
-    const cancelled = cancelTrip(trip.id)
+  it('cancel resets status and trip visited but keeps global', async () => {
+    const trip = await saveTrip(variant('v1', 'One'))
+    await setTripStatus(trip.id, 'in-progress')
+    await toggleTripVisited(trip.id, 'a')
+    const cancelled = await cancelTrip(trip.id)
     expect(cancelled?.status).toBe('new')
     expect(tripVisitedIds(cancelled!).size).toBe(0)
     expect(loadVisitedPlaceIds().has('a')).toBe(true)
   })
 
-  it('persists trip so loadTrips returns it after save', () => {
-    const trip = saveTrip(variant('persist', 'Persisted'))
+  it('persists trip so loadTrips returns it after save', async () => {
+    const trip = await saveTrip(variant('persist', 'Persisted'))
     expect(loadTrips().some((t) => t.id === trip.id)).toBe(true)
     expect(getTrip(trip.id)?.variant.title).toBe('Persisted')
   })

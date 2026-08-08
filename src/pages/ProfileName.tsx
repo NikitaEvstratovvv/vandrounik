@@ -28,8 +28,7 @@ export function ProfileNamePanel({ onClose }: ProfileNamePanelProps) {
 
   const save = () => {
     if (!canSave) return
-    updateSession({ displayName: trimmed, username: trimmed })
-    setDone(true)
+    void updateSession({ displayName: trimmed, username: trimmed }).then(() => setDone(true))
   }
 
   return (

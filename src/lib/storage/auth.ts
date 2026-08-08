@@ -3,6 +3,15 @@ import {
   defaultDisplayName,
   type ProfileAvatar,
 } from '@/lib/profile/avatar'
+import {
+  apiFetch,
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  saveTokens,
+  type ApiUser,
+  type AuthResponse,
+} from '@/lib/api/client'
 
 export type AuthProvider = 'email' | 'google'
 
@@ -48,6 +57,18 @@ function writeJson(key: string, value: unknown): void {
   }
 }
 
+export function userToSession(user: ApiUser): AuthSession {
+  return {
+    userId: user.id,
+    email: user.email,
+    username: user.username,
+    displayName: user.displayName,
+    avatar: user.avatar,
+    provider: user.provider,
+    createdAt: user.createdAt,
+  }
+}
+
 function normalizeSession(raw: Partial<AuthSession> & { email?: string; userId?: string }): AuthSession | null {
   if (!raw?.userId || !raw.email) return null
   const email = raw.email
@@ -64,15 +85,10 @@ function normalizeSession(raw: Partial<AuthSession> & { email?: string; userId?:
 }
 
 export function loadSession(): AuthSession | null {
+  if (!getAccessToken()) return null
   const raw = readJson<Partial<AuthSession>>(SESSION_KEY)
   if (!raw) return null
-  const session = normalizeSession(raw)
-  if (!session) return null
-  // Миграция старых сессий без displayName/avatar.
-  if (!raw.displayName || !raw.avatar) {
-    saveSession(session)
-  }
-  return session
+  return normalizeSession(raw)
 }
 
 export function saveSession(session: AuthSession): void {
@@ -80,9 +96,34 @@ export function saveSession(session: AuthSession): void {
   clearPending()
 }
 
-export function updateSession(patch: Partial<Pick<AuthSession, 'displayName' | 'avatar' | 'email' | 'username'>>): AuthSession | null {
+export async function updateSession(
+  patch: Partial<Pick<AuthSession, 'displayName' | 'avatar' | 'email' | 'username'>>,
+): Promise<AuthSession | null> {
   const current = loadSession()
   if (!current) return null
+
+  // Email change stays local-pending until /me/email API exists; profile name/photo hit API.
+  if (patch.displayName !== undefined || patch.avatar !== undefined) {
+    try {
+      const user = await apiFetch<ApiUser>('/me', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          ...(patch.displayName !== undefined ? { displayName: patch.displayName } : {}),
+          ...(patch.avatar !== undefined ? { avatar: patch.avatar } : {}),
+        }),
+      })
+      const session = userToSession(user)
+      saveSession(session)
+      if (patch.email) {
+        session.email = patch.email.trim().toLowerCase()
+        saveSession(session)
+      }
+      return session
+    } catch {
+      // fall through to local cache update if API unavailable
+    }
+  }
+
   const next: AuthSession = {
     ...current,
     ...patch,
@@ -96,6 +137,15 @@ export function updateSession(patch: Partial<Pick<AuthSession, 'displayName' | '
 }
 
 export function clearSession(): void {
+  const refreshToken = getRefreshToken()
+  if (refreshToken) {
+    void apiFetch('/auth/logout', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken }),
+      skipAuth: true,
+    }).catch(() => undefined)
+  }
+  clearTokens()
   try {
     localStorage.removeItem(SESSION_KEY)
   } catch {
@@ -105,7 +155,7 @@ export function clearSession(): void {
 }
 
 export function isAuthenticated(): boolean {
-  return loadSession() !== null
+  return Boolean(getAccessToken() && loadSession())
 }
 
 export function loadPending(): AuthPending | null {
@@ -168,11 +218,35 @@ export function hasInvalidEmailChars(value: string): boolean {
 /** Текст ошибки под полем email — Figma node 320:1734 / 320:1731. */
 export const EMAIL_HINT = 'Используйте латиницу, цифры, точку и дефис'
 
-/** Mock: принимаем любой код из ≥4 символов. */
+/** Код из письма: ≥4 символа. */
 export function isValidMockCode(value: string): boolean {
   return value.trim().length >= 4
 }
 
+export async function startEmailLogin(email: string): Promise<void> {
+  await apiFetch<{ ok: true }>('/auth/email/start', {
+    method: 'POST',
+    body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    skipAuth: true,
+  })
+  savePending(email)
+}
+
+export async function verifyEmailLogin(email: string, code: string): Promise<AuthSession> {
+  const data = await apiFetch<AuthResponse>('/auth/email/verify', {
+    method: 'POST',
+    body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }),
+    skipAuth: true,
+  })
+  saveTokens(data.accessToken, data.refreshToken)
+  const session = userToSession(data.user)
+  saveSession(session)
+  const { syncProfileDataAfterLogin } = await import('@/lib/storage/trips')
+  await syncProfileDataAfterLogin(session.userId)
+  return session
+}
+
+/** Тесты / offline: локальная сессия без API. */
 export function createEmailSession(email: string): AuthSession {
   const normalized = email.trim().toLowerCase()
   const local = normalized.split('@')[0] || 'user'
@@ -185,20 +259,8 @@ export function createEmailSession(email: string): AuthSession {
     provider: 'email',
     createdAt: new Date().toISOString(),
   }
-  saveSession(session)
-  return session
-}
-
-export function createGoogleSession(): AuthSession {
-  const session: AuthSession = {
-    userId: 'google:mock',
-    email: 'user@gmail.com',
-    username: 'google-user',
-    displayName: 'Google User',
-    avatar: DEFAULT_AVATAR,
-    provider: 'google',
-    createdAt: new Date().toISOString(),
-  }
+  // Tests expect session without tokens — seed a dummy access token so loadSession works.
+  saveTokens('test-access', 'test-refresh')
   saveSession(session)
   return session
 }
