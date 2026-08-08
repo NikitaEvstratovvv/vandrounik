@@ -20,7 +20,7 @@ Static UI assets served at `/figma/…`.
 | `emblem.png` | (available; prefer frame SVGs for animation) |
 | `avatars/stork.png` … `mouse.png` | Profile preset avatars (7) |
 | `success-check.png` | Name / email change success art |
-| `route-saved-stork.png` | E4 route saved illustration (Figma 302:1180 / frame 301:1143) |
+| `route-saved-stork.png` | E4 route saved + E6 trip completed illustration |
 | `trips-empty-stork.png` | E5 empty state stork (Figma 302:1178) |
 | `arrow-right-long.svg` | E5 trip card A→B glyph export (inline `ArrowRightLong` preferred) |
 | `map-yandex.svg` | Yandex Maps chip icon (Figma 272:1107) |

@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "preview": "vite preview",
-    "import:osm-belarus": "node scripts/fetch-belarus-osm.mjs"
+    "import:osm-belarus": "node scripts/fetch-belarus-osm.mjs",
+    "enrich:place-images": "node scripts/enrich-place-images.mjs"
   },
   "dependencies": {
     "@chakra-ui/react": "^3.35.0",

@@ -31,7 +31,21 @@ export function googleMapsRouteUrl(stops: RouteStop[]): string | null {
   return `https://www.google.com/maps/dir/?${params.toString()}`
 }
 
-export function openExternalMap(url: string | null): void {
+/** Yandex Maps single-point URL. */
+export function yandexMapsPointUrl(point: LatLng): string {
+  return `https://yandex.ru/maps/?pt=${point.lng},${point.lat}&z=16&l=map`
+}
+
+/** Google Maps single-point URL. */
+export function googleMapsPointUrl(point: LatLng): string {
+  return `https://www.google.com/maps/search/?api=1&query=${point.lat},${point.lng}`
+}
+
+export function openExternalUrl(url: string | null | undefined): void {
   if (!url) return
   window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+export function openExternalMap(url: string | null): void {
+  openExternalUrl(url)
 }

@@ -36,6 +36,7 @@ export function Segmented<T extends string>({
       borderRadius="card"
       p="4px"
       w="full"
+      overflow="hidden"
       borderWidth={bordered ? '1px' : '0'}
       borderColor="line"
     >

@@ -9,6 +9,7 @@ import { DurationWidget } from '@/components/DurationWidget'
 import { DurationSheet } from '@/components/DurationSheet'
 import { SlideOverlay } from '@/components/SlideOverlay'
 import { PrimaryButton } from '@/components/PrimaryButton'
+import { TAB_BAR_HEIGHT } from '@/components/TabBar'
 import { useTabChrome } from '@/components/tab-chrome'
 import { InterestsPanel } from '@/pages/Interests'
 import { LocationPanel } from '@/pages/Location'
@@ -123,9 +124,11 @@ export function Plan() {
   }
 
   const openRouteSaved = (trip: SavedTrip) => {
-    setSavedTrip(trip)
+    // Ensure trip is readable from storage before opening E4 / trips.
+    const persisted = getTrip(trip.id) ?? trip
+    setSavedTrip(persisted)
     setRouteSavedOpen(true)
-    navigate(`/plan/results/saved?id=${encodeURIComponent(trip.id)}`)
+    navigate(`/plan/results/saved?id=${encodeURIComponent(persisted.id)}`)
   }
 
   const closeRouteSaved = () => setRouteSavedOpen(false)
@@ -140,8 +143,12 @@ export function Plan() {
     navigate(`/trips/${encodeURIComponent(trip.id)}`)
   }
 
-  const goToTrips = () => {
-    navigate('/trips')
+  const createNewRoute = () => {
+    setRouteSavedOpen(false)
+    setRouteDetailOpen(false)
+    setResultsOpen(false)
+    setSavedTrip(null)
+    navigate('/plan', { replace: true })
   }
 
   const routeDetailPresent = isRouteDetail || routeDetailOpen
@@ -200,7 +207,7 @@ export function Plan() {
           <DurationWidget onOpen={() => setDurationOpen(true)} />
         </Flex>
 
-        <Box p="16px">
+        <Box px="16px" pt="16px" pb={`${TAB_BAR_HEIGHT}px`}>
           <PrimaryButton onClick={() => navigate('/plan/loading')} disabled={!canGenerate}>
             Подобрать маршрут
           </PrimaryButton>
@@ -240,7 +247,7 @@ export function Plan() {
           animateEnter={false}
           zIndex={16}
         >
-          <RouteDetailPanel onClose={closeRouteDetail} />
+          <RouteDetailPanel onClose={closeRouteDetail} onRouteSaved={openRouteSaved} />
         </SlideOverlay>
       ) : null}
 
@@ -248,14 +255,13 @@ export function Plan() {
         <SlideOverlay
           open={routeSavedOpen}
           onExited={handleRouteSavedExited}
-          animateEnter={false}
           zIndex={16}
         >
           <RouteSavedPanel
             trip={savedTrip}
             onClose={closeRouteSaved}
             onOpenTrip={openSavedTripDetail}
-            onGoToTrips={goToTrips}
+            onCreateNew={createNewRoute}
           />
         </SlideOverlay>
       ) : null}

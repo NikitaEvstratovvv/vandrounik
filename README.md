@@ -40,7 +40,7 @@ A0 Auth email (/)
       → TabShell
           ├── E1 Создать (/plan)          + меню
           ├── E5 Мои маршруты (/trips)    + меню
-          │     └── E3 детали             overlay  /trips/:tripId
+          │     └── E6 маршрут            overlay  /trips/:tripId
           └── Профиль (/profile)          + меню
                 ├── Настройки             /profile/settings
                 ├── Фото / Имя / Почта    /profile/settings/…
@@ -71,8 +71,9 @@ A0 Auth email (/)
 | BS1 | `src/components/DurationSheet.tsx` | Длительность (часы / км) |
 | L1 | `src/pages/Loading.tsx` | Генерация маршрута (OSRM) |
 | E2 | `src/pages/Results.tsx` | Карта + 3 варианта; preview-sheet → сохранить |
-| E3 | `src/pages/RouteDetail.tsx` | Список остановок, «был здесь» (deep-link) |
+| E3 | `src/pages/RouteDetail.tsx` | Детали варианта (deep-link с generation) |
 | E4 | `src/pages/RouteSaved.tsx` | Успех после сохранения маршрута |
+| E6 | `src/pages/TripRoute.tsx` | Управление поездкой: Поехали, «Был здесь», карта/список |
 
 ### Генерация маршрута
 
@@ -101,7 +102,5 @@ A0 Auth email (/)
 
 ## Не реализовано (v2+)
 
-- Статусы поездки «В пути» / «Завершен» (UI бейджей есть, смена статуса — позже); E6 и далее
 - Каталог (E7); удаление аккаунта / CDN аватаров
-- E3 карточка места
 - Push, шаринг маршрута

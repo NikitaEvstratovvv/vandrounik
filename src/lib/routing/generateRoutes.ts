@@ -568,6 +568,8 @@ function buildPlaceStop(place: RoutePlace, order: number): RouteStop {
     lat: place.lat,
     lng: place.lng,
     description: place.description,
+    ...(place.wikipediaUrl ? { wikipediaUrl: place.wikipediaUrl } : {}),
+    ...(place.imageUrl ? { imageUrl: place.imageUrl } : {}),
   }
 }
 

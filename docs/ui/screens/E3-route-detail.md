@@ -11,8 +11,9 @@
 
 - Overlay stacked above E2 (`zIndex={16}`, no enter animation).
 - Map + stop list; toggle «был здесь» via visited storage.
-- Deep-link / legacy path only — happy-path select is E2 sheet → E4 saved.
+- Deep-link / legacy path only — happy-path select is E2 sheet → E4 saved → E6 (`/trips/:tripId`).
 - Save trip CTA on this screen remains a stub (persistence lives on E2 sheet → `saveTrip`).
+- Opening a saved trip from E5 uses **E6** [`TripRoutePanel`](E6-trip-route.md), not this panel.
 
 ## Components
 

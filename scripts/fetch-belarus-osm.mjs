@@ -146,7 +146,61 @@ function resolveName(tags, coords, mapped) {
 
 function buildDescription(name, type, city) {
   const locationPart = city ? `, ${city}` : ', Беларусь'
-  return `${type} «${name}»${locationPart}. Объект OpenStreetMap.`
+  return `${type} «${name}»${locationPart}.`
+}
+
+function wikipediaArticleUrl(lang, title) {
+  const cleaned = String(title || '').trim()
+  if (!cleaned) return undefined
+  const slug = cleaned.replace(/ /g, '_')
+  return `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(slug)}`
+}
+
+/** Prefer wikipedia:ru, then wikipedia=lang:Title. No bare wikidata. */
+function wikipediaUrlFromOsmTags(tags) {
+  if (!tags) return undefined
+
+  const ruTitle = (tags['wikipedia:ru'] || '').trim()
+  if (ruTitle) {
+    const title =
+      ruTitle.includes(':') && /^[a-z-]+:/i.test(ruTitle)
+        ? ruTitle.replace(/^[a-z-]+:/i, '')
+        : ruTitle
+    return wikipediaArticleUrl('ru', title)
+  }
+
+  const wiki = (tags.wikipedia || '').trim()
+  if (wiki) {
+    const match = wiki.match(/^([a-z-]+):(.+)$/i)
+    if (match) return wikipediaArticleUrl(match[1], match[2].trim())
+  }
+
+  return undefined
+}
+
+function commonsFileUrl(fileName, width = 640) {
+  const cleaned = String(fileName || '')
+    .trim()
+    .replace(/^File:/i, '')
+    .replace(/^Файл:/i, '')
+  if (!cleaned) return undefined
+  return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(cleaned)}?width=${width}`
+}
+
+function imageUrlFromOsmTags(tags) {
+  if (!tags) return undefined
+
+  const commons = (tags.wikimedia_commons || '').trim()
+  if (commons && /^(File:|Файл:)/i.test(commons)) {
+    return commonsFileUrl(commons)
+  }
+
+  const image = (tags.image || '').trim()
+  if (!image) return undefined
+  if (/^(File:|Файл:)/i.test(image)) return commonsFileUrl(image)
+  if (/^https?:\/\/upload\.wikimedia\.org\//i.test(image)) return image
+  if (/^https?:\/\/commons\.wikimedia\.org\/wiki\/Special:FilePath\//i.test(image)) return image
+  return undefined
 }
 
 function typePrefix(elementType) {
@@ -244,6 +298,9 @@ function elementsToPlaces(elements) {
     seen.add(id)
 
     const city = (tags['addr:city'] || tags['addr:town'] || tags['addr:village'] || '').trim()
+    const wikipediaUrl = wikipediaUrlFromOsmTags(tags)
+    const imageUrl = imageUrlFromOsmTags(tags)
+    const wikidataId = (tags.wikidata || '').trim() || undefined
 
     places.push({
       id,
@@ -255,6 +312,9 @@ function elementsToPlaces(elements) {
       lng: coords.lng,
       interests: mapped.interests,
       description: buildDescription(name, mapped.type, city || null),
+      ...(wikipediaUrl ? { wikipediaUrl } : {}),
+      ...(imageUrl ? { imageUrl } : {}),
+      ...(wikidataId ? { wikidataId } : {}),
       source: 'osm',
     })
   }

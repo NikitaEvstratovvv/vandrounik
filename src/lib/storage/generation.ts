@@ -1,11 +1,11 @@
-import { hasGenerationCoordinates, MIN_ROUTE_VARIANTS } from '@/lib/routing/generateRoutes'
+import { hasGenerationCoordinates } from '@/lib/routing/generateRoutes'
 import type { GenerationResult } from '@/types'
 
 const STORAGE_KEY = 'vandrounik.generation.v3'
 const LEGACY_STORAGE_KEYS = ['vandrounik.generation.v2', 'vandrounik.generation.v1'] as const
 
 function isUsableGeneration(result: GenerationResult): boolean {
-  return hasGenerationCoordinates(result) && result.variants.length >= MIN_ROUTE_VARIANTS
+  return hasGenerationCoordinates(result) && result.variants.length >= 1
 }
 
 export function saveGeneration(result: GenerationResult): void {

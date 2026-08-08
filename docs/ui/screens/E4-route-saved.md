@@ -9,9 +9,9 @@
 
 ## Behavior
 
-- Overlay stacked above E2 (`zIndex={16}`, no enter animation).
+- Overlay stacked above E2 (`zIndex={16}`, slide-in enter + slide-out exit).
 - Shown after «Сохранить» in the route details sheet; trip written via `saveTrip` (`vandrounik.trips.v1`).
-- CTAs «Открыть маршрут» / «Перейти к моим маршрутам» temporarily dismiss the overlay (target screens not built yet).
+- CTAs: «Открыть маршрут» → `/trips/:tripId` (E6); «Создать новый маршрут» → `/plan` (E1 hub).
 
 ## Components
 

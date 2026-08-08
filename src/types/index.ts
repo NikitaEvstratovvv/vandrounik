@@ -64,6 +64,8 @@ export type RouteStop = {
   lat: number
   lng: number
   description?: string
+  wikipediaUrl?: string
+  imageUrl?: string
   driveMinutesToNext?: number
 }
 
@@ -105,6 +107,8 @@ export type RoutePlace = {
   lng: number
   interests: InterestId[]
   description: string
+  wikipediaUrl?: string
+  imageUrl?: string
   source?: 'seed' | 'osm'
 }
 

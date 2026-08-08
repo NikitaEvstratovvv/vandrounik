@@ -101,6 +101,7 @@ export function RouteDetailsSheet({ open, variant, onClose, onExited, onSave }: 
   }, [open])
 
   const handleTransitionEnd = (event: React.TransitionEvent) => {
+    if (event.target !== event.currentTarget) return
     if (event.propertyName !== 'transform') return
     if (open) return
     onExitedRef.current()
@@ -190,7 +191,14 @@ export function RouteDetailsSheet({ open, variant, onClose, onExited, onSave }: 
       </Box>
 
       <Box p="8px" flexShrink={0}>
-        <PrimaryButton onClick={onSave}>Сохранить</PrimaryButton>
+        <PrimaryButton
+          onClick={(e) => {
+            e.stopPropagation()
+            onSave()
+          }}
+        >
+          Сохранить
+        </PrimaryButton>
       </Box>
     </Box>
   )

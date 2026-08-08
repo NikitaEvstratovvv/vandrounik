@@ -9,7 +9,7 @@ const ROOT_TABS = new Set(['/plan', '/trips', '/profile'])
 
 /**
  * Authenticated shell: Outlet + TabBar на корневых табах.
- * Бар скрыт на /plan/* overlays (pathname) и при forceHidden (duration sheet и т.п.).
+ * TabBar оверлеем поверх контента (frost); скрыт на /plan/* overlays и при forceHidden.
  */
 export function TabShell() {
   const [forceHidden, setForceHiddenState] = useState(false)
@@ -35,8 +35,8 @@ function TabShellLayout() {
     <Screen>
       <Box flex="1" minH="0" display="flex" flexDirection="column" position="relative" overflow="hidden">
         <Outlet />
+        {showTabBar ? <TabBar /> : null}
       </Box>
-      {showTabBar ? <TabBar /> : null}
     </Screen>
   )
 }

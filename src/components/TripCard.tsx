@@ -60,6 +60,7 @@ export function TripCard({ trip, onSelect }: TripCardProps) {
       as="button"
       type="button"
       w="full"
+      flexShrink={0}
       textAlign="left"
       bg="background"
       borderRadius="card"

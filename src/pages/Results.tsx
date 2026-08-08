@@ -86,11 +86,14 @@ export function ResultsPanel({ onClose, onRouteSaved }: ResultsPanelProps) {
   const openRoutePreview = () => setOverlay({ type: 'route' })
 
   const handleSave = () => {
-    if (!generation) return
-    const variant = generation.variants[variantIndex] ?? generation.variants[0]
-    const trip = saveTrip(variant, generation.params)
-    closeRouteSheet()
+    const snapshot = loadGeneration()
+    if (!snapshot || snapshot.variants.length === 0) return
+    const variant = snapshot.variants[variantIndex] ?? snapshot.variants[0]
+    if (!variant) return
+    const trip = saveTrip(variant, snapshot.params)
+    // Open E4 first so success UI is not lost if sheet exit races.
     onRouteSaved(trip)
+    closeRouteSheet()
   }
 
   if (!generation || generation.variants.length === 0) {

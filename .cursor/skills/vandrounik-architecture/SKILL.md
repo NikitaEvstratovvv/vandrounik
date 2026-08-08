@@ -22,7 +22,7 @@ A0 Auth email (/)
       → TabShell (RequireAuth)
           ├── E1 Создать (/plan)        + TabBar
           ├── E5 Trips (/trips)         + TabBar
-          │     └── E3 detail SlideOverlay /trips/:tripId
+          │     └── E6 trip route SlideOverlay /trips/:tripId
           └── E8 Profile (/profile)     + TabBar
                 ├── Settings  SlideOverlay  /profile/settings
                 ├── Photo     SlideOverlay  /profile/settings/photo
@@ -58,8 +58,8 @@ Do **not** add a top-level page for a panel that should stack over Plan/Profile 
 
 | Pattern | Use |
 |---------|-----|
-| `SlideOverlay` | Full-screen stack (S1, S2, E2, E4 saved, E3 deep-link, profile settings) |
-| `BottomSheet` | Transient sheet (BS1 Duration) |
+| `SlideOverlay` | Full-screen stack (S1, S2, E2, E4 saved, E3 deep-link, E6 trip route, profile settings) |
+| `BottomSheet` | Transient sheet (BS1 Duration, E6 manage/confirm) |
 | Full route | Auth (A0–A1), TabShell tabs, Loading |
 
 ## State
@@ -71,8 +71,8 @@ Do **not** add a top-level page for a panel that should stack over Plan/Profile 
 | Email-change pending | `src/lib/storage/auth.ts` | `vandrounik.auth.email-change.v1` |
 | Wizard | `src/store/wizard.tsx` | `vandrounik.wizard.v1` |
 | Generation | `src/lib/storage/generation.ts` | `vandrounik.generation.v3` |
-| Saved trips | `src/lib/storage/trips.ts` | `vandrounik.trips.v1` |
-| Visited | `src/lib/storage/visited.ts` | see module |
+| Saved trips | `src/lib/storage/trips.ts` | `vandrounik.trips.v1` (status + per-trip `visitedPlaceIds`) |
+| Visited | `src/lib/storage/visited.ts` | global places for Profile; also updated on trip mark |
 | Avatar helpers | `src/lib/profile/avatar.ts` | presets + resize |
 
 CTA «Подобрать маршрут» needs origin + destination (coords) + ≥1 interest. Duration optional.

@@ -55,6 +55,14 @@ npm run import:osm-belarus
 
 После выполнения рекомендуется вручную проверить 10–15 точек на соответствие координат.
 
+Превью фото для карточек мест:
+
+```bash
+npm run enrich:place-images
+```
+
+Скрипт пишет `imageUrl` в `belarus-osm-places.json` из OSM Commons-тегов, Wikidata P18 и (fallback) Wikipedia summary. Без фото блок картинки в UI не показывается.
+
 ## Построение маршрута
 
 Пользовательские точки «Откуда» и «Куда» геокодируются через Nominatim (`countrycodes=by`).  

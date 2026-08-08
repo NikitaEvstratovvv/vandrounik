@@ -9,10 +9,9 @@ import { RouteDetailStopRow } from '@/components/RouteDetailStopRow'
 import { formatRouteSummarySm } from '@/lib/format'
 import { isRoutePlaceStop, routePlaceStops } from '@/lib/routing/routeStops'
 import { loadGeneration } from '@/lib/storage/generation'
+import { saveTrip, type SavedTrip } from '@/lib/storage/trips'
 import { loadVisitedPlaceIds, toggleVisitedPlace } from '@/lib/storage/visited'
 import type { RouteVariant } from '@/types'
-
-const SAVE_HINT_MS = 2400
 
 type RouteDetailPanelProps = {
   onClose: () => void
@@ -20,10 +19,17 @@ type RouteDetailPanelProps = {
   variant?: RouteVariant
   /** Скрыть CTA «Сохранить» — маршрут уже в «Мои маршруты». */
   hideSave?: boolean
+  /** После сохранения (deep-link с generation). */
+  onRouteSaved?: (trip: SavedTrip) => void
 }
 
 /** E3 — финальный экран выбранного маршрута (оверлей поверх E2 / E5). */
-export function RouteDetailPanel({ onClose, variant: variantProp, hideSave = false }: RouteDetailPanelProps) {
+export function RouteDetailPanel({
+  onClose,
+  variant: variantProp,
+  hideSave = false,
+  onRouteSaved,
+}: RouteDetailPanelProps) {
   const navigate = useNavigate()
   const detailMatch = useMatch('/plan/results/:variantId')
   const variantId = detailMatch?.params.variantId
@@ -36,8 +42,6 @@ export function RouteDetailPanel({ onClose, variant: variantProp, hideSave = fal
 
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null)
   const [visitedIds, setVisitedIds] = useState(() => loadVisitedPlaceIds())
-  const [saveHint, setSaveHint] = useState(false)
-  const saveHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (variantProp) return
@@ -47,23 +51,20 @@ export function RouteDetailPanel({ onClose, variant: variantProp, hideSave = fal
     }
   }, [generation, variant, variantId, navigate, variantProp])
 
-  useEffect(
-    () => () => {
-      if (saveHintTimerRef.current) clearTimeout(saveHintTimerRef.current)
-    },
-    [],
-  )
-
   const handleToggleVisited = useCallback((placeId: string) => {
     toggleVisitedPlace(placeId)
     setVisitedIds(loadVisitedPlaceIds())
   }, [])
 
-  const handleSaveStub = useCallback(() => {
-    setSaveHint(true)
-    if (saveHintTimerRef.current) clearTimeout(saveHintTimerRef.current)
-    saveHintTimerRef.current = setTimeout(() => setSaveHint(false), SAVE_HINT_MS)
-  }, [])
+  const handleSave = useCallback(() => {
+    if (!variant) return
+    const trip = saveTrip(variant, generation?.params ?? null)
+    if (onRouteSaved) {
+      onRouteSaved(trip)
+      return
+    }
+    navigate(`/trips/${encodeURIComponent(trip.id)}`)
+  }, [variant, generation?.params, onRouteSaved, navigate])
 
   const handleStopSelect = useCallback((placeId: string) => {
     setSelectedStopId(placeId)
@@ -135,7 +136,10 @@ export function RouteDetailPanel({ onClose, variant: variantProp, hideSave = fal
           pb="8px"
           css={{
             '&::-webkit-scrollbar': { width: '4px' },
-            '&::-webkit-scrollbar-thumb': { background: 'var(--chakra-colors-line)', borderRadius: '4px' },
+            '&::-webkit-scrollbar-thumb': {
+              background: 'var(--chakra-colors-line)',
+              borderRadius: '4px',
+            },
           }}
         >
           <Flex direction="column" gap="6px">
@@ -146,7 +150,9 @@ export function RouteDetailPanel({ onClose, variant: variantProp, hideSave = fal
                   selected={selectedStopId === stop.placeId}
                   visited={visitedIds.has(stop.placeId)}
                   onSelect={() => handleStopSelect(stop.placeId)}
-                  onToggleVisited={isRoutePlaceStop(stop) ? () => handleToggleVisited(stop.placeId) : undefined}
+                  onToggleVisited={
+                    isRoutePlaceStop(stop) ? () => handleToggleVisited(stop.placeId) : undefined
+                  }
                 />
               </Box>
             ))}
@@ -162,22 +168,7 @@ export function RouteDetailPanel({ onClose, variant: variantProp, hideSave = fal
             borderColor="line"
             bg="background"
           >
-            {saveHint ? (
-              <Text
-                fontSize="xs"
-                lineHeight="xs"
-                color="muted"
-                textAlign="center"
-                mb="8px"
-                css={{
-                  animation: 'vandr-fade-in 200ms ease-out',
-                  '@keyframes vandr-fade-in': { from: { opacity: 0 }, to: { opacity: 1 } },
-                }}
-              >
-                Сохранение маршрута появится в следующей версии
-              </Text>
-            ) : null}
-            <PrimaryButton onClick={handleSaveStub}>Сохранить маршрут</PrimaryButton>
+            <PrimaryButton onClick={handleSave}>Сохранить маршрут</PrimaryButton>
           </Box>
         )}
       </Flex>

@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Box, Flex, Image, Text, chakra } from '@chakra-ui/react'
 import { ProfileFadeIn, ProfileNavRow, ProfileStatCard } from '@/components/ProfileChrome'
 import { SlideOverlay } from '@/components/SlideOverlay'
+import { TAB_BAR_HEIGHT } from '@/components/TabBar'
 import { useTabChrome } from '@/components/tab-chrome'
 import { clearSession, loadSession } from '@/lib/storage/auth'
 import { loadVisitedPlaceIds } from '@/lib/storage/visited'
@@ -171,15 +172,17 @@ export function Profile() {
             </Text>
           </Flex>
 
-          <Flex gap="8px" w="full">
-            <ProfileStatCard value={placesSeen} label="Посещено мест" />
-            <ProfileStatCard value={routesCreated} label="Создано маршрутов" />
-          </Flex>
+          <Flex direction="column" gap="8px" w="full">
+            <Flex gap="8px" w="full">
+              <ProfileStatCard value={placesSeen} label="Посещено мест" />
+              <ProfileStatCard value={routesCreated} label="Создано маршрутов" />
+            </Flex>
 
-          <ProfileNavRow label="Настройки" onClick={() => setSettingsOpen(true)} />
+            <ProfileNavRow label="Настройки" onClick={() => setSettingsOpen(true)} />
+          </Flex>
         </Flex>
 
-        <Box px="16px" py="8px" flexShrink={0}>
+        <Box px="16px" pt="8px" pb={`${TAB_BAR_HEIGHT}px`} flexShrink={0}>
           <chakra.button
             type="button"
             onClick={logout}

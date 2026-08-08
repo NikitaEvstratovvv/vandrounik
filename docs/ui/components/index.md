@@ -15,7 +15,7 @@ Prefer these over one-off markup. Tokens: [design-tokens.md](../design-tokens.md
 | `TripCard` | `src/components/TripCard.tsx` | E5 saved trip row (new / in-progress / completed) |
 | `RequireAuth` | `src/components/RequireAuth.tsx` | Gate tab routes + loading behind mock session |
 | `SlideOverlay` | `src/components/SlideOverlay.tsx` | Full-screen slide from right |
-| `BottomSheet` | `src/components/BottomSheet.tsx` | Sheet + backdrop |
+| `BottomSheet` | `src/components/BottomSheet.tsx` | Sheet + backdrop (`flush` \| `inset` floating 8px) |
 | `SheetOverlay` | `src/components/SheetOverlay.tsx` | Dim layer (popover/sheet) |
 
 ## Controls
@@ -48,6 +48,10 @@ Prefer these over one-off markup. Tokens: [design-tokens.md](../design-tokens.md
 | `RouteDetailsSheet` | `src/components/RouteDetailsSheet.tsx` |
 | `StopRow` | `src/components/StopRow.tsx` |
 | `RouteDetailStopRow` | `src/components/RouteDetailStopRow.tsx` |
+| `TripStopRow` | `src/components/TripStopRow.tsx` |
+| `TripPlaceSheet` | `src/components/TripPlaceSheet.tsx` |
+| `TripManageMenu` / `TripConfirmSheet` | `src/components/TripManageSheets.tsx` |
+| `TripCompletedPanel` | `src/components/TripCompletedPanel.tsx` |
 | `PlacePopover` | `src/components/PlacePopover.tsx` |
 | `RouteMapPreview` | `src/components/RouteMapPreview.tsx` |
 

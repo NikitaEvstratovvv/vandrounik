@@ -1,9 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { Box, Flex, Text, VStack } from '@chakra-ui/react'
+import { Box, Flex, Image, Text, VStack, chakra } from '@chakra-ui/react'
 import { CloseIcon } from '@/components/icons'
 import { SquareButton } from '@/components/SquareButton'
+import {
+  googleMapsPointUrl,
+  openExternalMap,
+  openExternalUrl,
+  yandexMapsPointUrl,
+} from '@/lib/maps/externalMaps'
 import type { RouteStop } from '@/types'
-import { formatPlaceTypeLabel } from '@/data/placeTaxonomy'
+import { formatPlaceDescription, formatPlaceTypeLabel } from '@/data/placeTaxonomy'
 
 const DURATION_MS = 280
 const EASE = 'cubic-bezier(0.4, 0, 0.2, 1)'
@@ -16,10 +22,44 @@ type PlacePopoverProps = {
   onExited: () => void
 }
 
-function OutlinePillButton({ children }: { children: string }) {
+function MapChip({ label, iconSrc, onClick }: { label: string; iconSrc: string; onClick: () => void }) {
+  return (
+    <chakra.button
+      type="button"
+      onClick={onClick}
+      display="inline-flex"
+      alignItems="center"
+      justifyContent="center"
+      gap="6px"
+      h="36px"
+      pl="6px"
+      pr="12px"
+      bg="background"
+      borderWidth="1px"
+      borderStyle="solid"
+      borderColor="line"
+      borderRadius="20px"
+      cursor="pointer"
+      flexShrink={0}
+      transition="opacity 150ms"
+      _hover={{ opacity: 0.85 }}
+    >
+      <Box boxSize="24px" flexShrink={0} overflow="hidden" borderRadius="full">
+        <Image src={iconSrc} alt="" w="24px" h="24px" display="block" />
+      </Box>
+      <Text fontSize="sm" fontWeight="medium" lineHeight="sm" color="foreground" whiteSpace="nowrap">
+        {label}
+      </Text>
+    </chakra.button>
+  )
+}
+
+function OutlinePillButton({ children, onClick }: { children: string; onClick: () => void }) {
   return (
     <Box
       as="button"
+      type="button"
+      onClick={onClick}
       h="36px"
       px="16px"
       display="flex"
@@ -41,23 +81,11 @@ function OutlinePillButton({ children }: { children: string }) {
   )
 }
 
-function PlaceImagePlaceholder() {
+function PlacePhoto({ src }: { src: string }) {
   return (
-    <Flex
-      h="160px"
-      w="full"
-      borderRadius="sm"
-      bg="secondary"
-      align="center"
-      justifyContent="center"
-      color="muted"
-    >
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.5" />
-        <circle cx="8.5" cy="10" r="1.5" fill="currentColor" />
-        <path d="m3 16 5-5 4 4 3-3 6 6" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-      </svg>
-    </Flex>
+    <Box h="160px" w="full" borderRadius="sm" overflow="hidden" bg="secondary" flexShrink={0}>
+      <Image src={src} alt="" w="full" h="full" objectFit="cover" display="block" />
+    </Box>
   )
 }
 
@@ -93,6 +121,8 @@ export function PlacePopover({ open, stop, onClose, onExited }: PlacePopoverProp
     if (open) return
     onExitedRef.current()
   }
+
+  const point = { lat: stop.lat, lng: stop.lng }
 
   return (
     <Box
@@ -142,15 +172,26 @@ export function PlacePopover({ open, stop, onClose, onExited }: PlacePopoverProp
 
       <Box flex="0 1 auto" minH={0} overflowY="auto" overscrollBehavior="contain">
         <VStack align="stretch" gap="16px" px="16px" pb="24px">
-          <PlaceImagePlaceholder />
+          {stop.imageUrl ? <PlacePhoto src={stop.imageUrl} /> : null}
 
-          <Flex gap="8px">
-            <OutlinePillButton>Карта</OutlinePillButton>
-            <OutlinePillButton>Wiki</OutlinePillButton>
+          <Flex flexWrap="wrap" gap="8px">
+            <MapChip
+              label="Яндекс карта"
+              iconSrc="/figma/map-yandex.svg"
+              onClick={() => openExternalMap(yandexMapsPointUrl(point))}
+            />
+            <MapChip
+              label="Google map"
+              iconSrc="/figma/map-google.svg"
+              onClick={() => openExternalMap(googleMapsPointUrl(point))}
+            />
+            {stop.wikipediaUrl ? (
+              <OutlinePillButton onClick={() => openExternalUrl(stop.wikipediaUrl)}>Wiki</OutlinePillButton>
+            ) : null}
           </Flex>
 
           <Text fontSize="sm" fontWeight="normal" lineHeight="sm" color="primary">
-            {stop.description ??
+            {formatPlaceDescription(stop.description) ??
               'Описание места появится после подключения каталога достопримечательностей.'}
           </Text>
         </VStack>

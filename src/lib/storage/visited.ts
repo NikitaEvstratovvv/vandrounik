@@ -27,6 +27,14 @@ export function isPlaceVisited(placeId: string): boolean {
   return loadVisitedPlaceIds().has(placeId)
 }
 
+/** Добавляет место в глобальный список посещённых (idempotent). */
+export function markPlaceVisited(placeId: string): void {
+  const ids = new Set(readIds())
+  if (ids.has(placeId)) return
+  ids.add(placeId)
+  writeIds([...ids])
+}
+
 /** Переключает отметку «был здесь»; возвращает новое состояние. */
 export function toggleVisitedPlace(placeId: string): boolean {
   const ids = new Set(readIds())

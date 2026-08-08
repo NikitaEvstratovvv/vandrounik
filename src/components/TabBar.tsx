@@ -16,12 +16,30 @@ const TABS: TabDef[] = [
 ]
 
 /**
+ * Высота оверлейного TabBar: p8 + pill (p4 + py8 + 24 icon + 16 text).
+ * Используй как нижний padding скролла на корневых табах.
+ */
+export const TAB_BAR_HEIGHT = 80
+
+/**
  * Нижний tab bar — Figma 271:1300 / 271:1255.
  * Только на корневых табах (/plan, /trips, /profile).
+ * Позиционируется поверх контента (frost), контент скроллится под ним.
  */
 export function TabBar() {
   return (
-    <Box as="nav" aria-label="Основное меню" flexShrink={0} p="8px" w="full">
+    <Box
+      as="nav"
+      aria-label="Основное меню"
+      position="absolute"
+      left={0}
+      right={0}
+      bottom={0}
+      zIndex={12}
+      p="8px"
+      w="full"
+      pointerEvents="none"
+    >
       <Flex
         gap="4px"
         align="center"
@@ -30,6 +48,7 @@ export function TabBar() {
         borderRadius="tab"
         boxShadow="tab"
         overflow="hidden"
+        pointerEvents="auto"
         style={{
           background: 'rgba(255, 255, 255, 0.8)',
           backdropFilter: 'blur(8px)',

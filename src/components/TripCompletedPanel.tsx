@@ -1,19 +1,14 @@
 import { Box, Flex, Image, Text, chakra } from '@chakra-ui/react'
 import { PrimaryButton } from '@/components/PrimaryButton'
 import { ProfileFadeIn } from '@/components/ProfileChrome'
-import type { SavedTrip } from '@/lib/storage/trips'
 
-type RouteSavedPanelProps = {
-  trip: SavedTrip
-  onClose: () => void
-  onOpenTrip?: (trip: SavedTrip) => void
-  onCreateNew?: () => void
+type TripCompletedPanelProps = {
+  onNewRoute: () => void
+  onBackToRoute: () => void
 }
 
-/** E4 — маршрут сохранён. Figma 301:1140. */
-export function RouteSavedPanel({ trip, onClose, onOpenTrip, onCreateNew }: RouteSavedPanelProps) {
-  const title = trip.variant.title
-
+/** Celebration after all POIs visited (Figma 305:2410). */
+export function TripCompletedPanel({ onNewRoute, onBackToRoute }: TripCompletedPanelProps) {
   return (
     <Flex direction="column" h="full" minH="0" bg="screen">
       <ProfileFadeIn
@@ -54,7 +49,7 @@ export function RouteSavedPanel({ trip, onClose, onOpenTrip, onCreateNew }: Rout
             textTransform="uppercase"
             w="full"
           >
-            {`Маршрут ${title} сохранен`}
+            Поездка завершена
           </Text>
           <Text
             fontSize="sm"
@@ -64,24 +59,22 @@ export function RouteSavedPanel({ trip, onClose, onOpenTrip, onCreateNew }: Rout
             textAlign="center"
             w="full"
           >
-            Можете начать поездку или создать новый&nbsp;маршрут
+            Возвращайтесь по скорее и&nbsp;отправляйтесь в&nbsp;новое путешествие
           </Text>
         </Flex>
 
         <Flex direction="column" gap="8px" w="full" flexShrink={0}>
-          <PrimaryButton onClick={() => (onOpenTrip ? onOpenTrip(trip) : onClose())}>
-            Открыть маршрут
-          </PrimaryButton>
+          <PrimaryButton onClick={onNewRoute}>Подобрать новый маршрут</PrimaryButton>
           <chakra.button
             type="button"
-            onClick={() => (onCreateNew ? onCreateNew() : onClose())}
+            onClick={onBackToRoute}
             w="full"
-            h="46px"
+            h="48px"
             display="flex"
             alignItems="center"
             justifyContent="center"
             px="16px"
-            py="9px"
+            py="12px"
             bg="secondary"
             color="foreground"
             borderRadius="card"
@@ -93,7 +86,7 @@ export function RouteSavedPanel({ trip, onClose, onOpenTrip, onCreateNew }: Rout
             transition="opacity 150ms"
             _hover={{ opacity: 0.85 }}
           >
-            Создать новый маршрут
+            Вернуться к маршруту
           </chakra.button>
         </Flex>
       </ProfileFadeIn>

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { googleMapsRouteUrl, yandexMapsRouteUrl } from '@/lib/maps/externalMaps'
+import {
+  googleMapsPointUrl,
+  googleMapsRouteUrl,
+  yandexMapsPointUrl,
+  yandexMapsRouteUrl,
+} from '@/lib/maps/externalMaps'
 import type { RouteStop } from '@/types'
 
 const stops: RouteStop[] = [
@@ -40,5 +45,11 @@ describe('externalMaps', () => {
   it('returns null for fewer than 2 stops', () => {
     expect(yandexMapsRouteUrl([stops[0]])).toBeNull()
     expect(googleMapsRouteUrl([])).toBeNull()
+  })
+
+  it('builds single-point map urls', () => {
+    const point = { lat: 53.45, lng: 26.47 }
+    expect(yandexMapsPointUrl(point)).toContain('pt=26.47,53.45')
+    expect(googleMapsPointUrl(point)).toContain('query=53.45,26.47')
   })
 })

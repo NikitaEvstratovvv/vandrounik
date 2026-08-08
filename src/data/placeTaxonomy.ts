@@ -57,3 +57,10 @@ export function formatPlaceTypeLabel(type: string, typeGroupLabel?: string): str
   }
   return type
 }
+
+/** Strip legacy OSM boilerplate from place card copy (saved trips may still have it). */
+export function formatPlaceDescription(description: string | undefined | null): string | undefined {
+  if (description == null) return undefined
+  const cleaned = description.replace(/\s*Объект OpenStreetMap\.\s*$/u, '').trimEnd()
+  return cleaned.length > 0 ? cleaned : undefined
+}

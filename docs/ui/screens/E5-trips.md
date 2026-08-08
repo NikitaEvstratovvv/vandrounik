@@ -13,5 +13,6 @@
 - Empty: stork `/figma/trips-empty-stork.png`, copy «Пока еще нет созданных маршрутов», CTA «Создать маршрут» → `/plan`.
 - List: saved trips from `loadTrips()` (`vandrounik.trips.v1`), newest first; `TripCard` shows title, origin→destination, km / time / places, savedAt.
 - Card badges (Figma): none (`new`), «Завершен» (`completed`), «В пути» (`in-progress`). New saves default to `new`.
-- Tap card → `SlideOverlay` with `RouteDetailPanel` (variant from trip, `hideSave`); URL `/trips/:tripId`.
-- E4 «Перейти к моим маршрутам» → `/trips`; «Открыть маршрут» → `/trips/:tripId`.
+- Tap card → `SlideOverlay` with `TripRoutePanel` (E6); URL `/trips/:tripId` (slide enter/exit 280ms).
+- Empty / list content: `vandr-fade-in` via `ProfileFadeIn`.
+- E4 «Открыть маршрут» → `/trips/:tripId`; «Создать новый маршрут» → `/plan`.

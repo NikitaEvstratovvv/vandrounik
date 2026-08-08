@@ -1,9 +1,9 @@
 import { chakra } from '@chakra-ui/react'
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 
 type PrimaryButtonProps = {
   children: ReactNode
-  onClick?: () => void
+  onClick?: (event: MouseEvent<HTMLButtonElement>) => void
   disabled?: boolean
   variant?: 'primary' | 'secondary'
   type?: 'button' | 'submit'

@@ -24,7 +24,7 @@ Implementation spec for the PWA UI. Lives next to the code so agents and PRs sta
 | [navigation.md](navigation.md) | Routes, overlays, deep links |
 | [figma-nodes.md](figma-nodes.md) | Screen / component → Figma node ID |
 | [assets.md](assets.md) | Files under `public/figma/` |
-| [screens/](screens/) | Per-screen notes (A0–A1 auth, E1–E5, E8 profile + settings, S1–S2, BS1, L1) |
+| [screens/](screens/) | Per-screen notes (A0–A1 auth, E1–E6, E8 profile + settings, S1–S2, BS1, L1) |
 | [components/index.md](components/index.md) | Reusable UI primitives |
 
 ## Related

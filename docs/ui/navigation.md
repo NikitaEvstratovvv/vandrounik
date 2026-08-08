@@ -12,7 +12,7 @@ A0 Auth email (/)
       → TabShell (RequireAuth)
           ├── E1 Создать (/plan)          + TabBar
           ├── E5 Trips (/trips)           + TabBar
-          │     └── E3 detail  SlideOverlay  /trips/:tripId
+          │     └── E6 trip route  SlideOverlay  /trips/:tripId
           └── E8 Profile (/profile)       + TabBar
                 ├── Settings   SlideOverlay  /profile/settings
                 ├── Photo      SlideOverlay  /profile/settings/photo  (zIndex 16)
@@ -54,7 +54,7 @@ Google (mock) с любого auth-экрана → /plan
 | `/plan/results/:variantId` | child of Plan | Route detail overlay (zIndex 16; deep-link) |
 | `/plan/loading` | `Loading` + `RequireAuth` | Full-screen generation; no TabShell |
 | `/trips` | `Trips` | TabBar; empty or list of saved trips |
-| `/trips/:tripId` | child of Trips | Route detail SlideOverlay; no TabBar |
+| `/trips/:tripId` | child of Trips | E6 trip manage SlideOverlay; no TabBar |
 | `/profile` | `Profile` | TabBar; hub E8 + settings stack overlays |
 | `/profile/settings` | child of Profile | Settings SlideOverlay; no TabBar |
 | `/profile/settings/photo` | child of Profile | Photo SlideOverlay (zIndex 16) |
@@ -78,7 +78,7 @@ Child routes under `/plan` and `/profile` have **no separate page elements** —
 | Interests | `InterestsPanel` | yes |
 | Location | `LocationPanel` | yes |
 | Results | `ResultsPanel` | no (`animateEnter={false}`) |
-| Route saved | `RouteSavedPanel` | no; `zIndex={16}` |
+| Route saved | `RouteSavedPanel` | yes; `zIndex={16}` |
 | Route detail | `RouteDetailPanel` | no; `zIndex={16}` |
 | Profile settings | `ProfileSettingsPanel` | yes |
 | Profile photo / name / email | panels in `Profile` | yes; `zIndex={16}` |

@@ -3,11 +3,13 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Box, Flex, Image, Text } from '@chakra-ui/react'
 import { Header } from '@/components/Header'
 import { PrimaryButton } from '@/components/PrimaryButton'
+import { ProfileFadeIn } from '@/components/ProfileChrome'
 import { SlideOverlay } from '@/components/SlideOverlay'
+import { TAB_BAR_HEIGHT } from '@/components/TabBar'
 import { TripCard } from '@/components/TripCard'
 import { useTabChrome } from '@/components/tab-chrome'
 import { getTrip, loadTrips, type SavedTrip } from '@/lib/storage/trips'
-import { RouteDetailPanel } from '@/pages/RouteDetail'
+import { TripRoutePanel } from '@/pages/TripRoute'
 
 /** E5 — Мои маршруты. Figma 272:1124 (empty) / 272:1309 (list). */
 export function Trips() {
@@ -57,9 +59,20 @@ export function Trips() {
 
   const handleDetailExited = () => {
     setActiveTrip(null)
+    setTrips(loadTrips())
     if (isDetail) {
       navigate('/trips', { replace: true })
     }
+  }
+
+  const handleTripChange = (trip: SavedTrip) => {
+    setActiveTrip(trip)
+    setTrips(loadTrips())
+  }
+
+  const handleTripDeleted = () => {
+    setDetailOpen(false)
+    setTrips(loadTrips())
   }
 
   const detailPresent = isDetail || detailOpen
@@ -76,12 +89,14 @@ export function Trips() {
       <Header variant="title" title="Мои маршруты" />
 
       {empty ? (
-        <Flex
+        <ProfileFadeIn
+          key="trips-empty"
           flex="1"
           direction="column"
           align="center"
           justify="center"
           p="16px"
+          pb={`${TAB_BAR_HEIGHT}px`}
           gap="40px"
           minH="0"
           overflow="hidden"
@@ -118,16 +133,19 @@ export function Trips() {
           <Box w="full" flexShrink={0}>
             <PrimaryButton onClick={() => navigate('/plan')}>Создать маршрут</PrimaryButton>
           </Box>
-        </Flex>
+        </ProfileFadeIn>
       ) : (
-        <Flex
+        <ProfileFadeIn
+          key="trips-list"
           flex="1"
           direction="column"
           gap="8px"
           px="16px"
-          pb="16px"
+          pb={`${TAB_BAR_HEIGHT}px`}
           minH="0"
+          h="0"
           overflowY={detailOpen ? 'hidden' : 'auto'}
+          overscrollBehavior="contain"
           css={{
             '&::-webkit-scrollbar': { width: '4px' },
             '&::-webkit-scrollbar-thumb': {
@@ -139,7 +157,7 @@ export function Trips() {
           {trips.map((trip) => (
             <TripCard key={trip.id} trip={trip} onSelect={() => openDetail(trip)} />
           ))}
-        </Flex>
+        </ProfileFadeIn>
       )}
 
       {detailPresent && activeTrip ? (
@@ -147,10 +165,14 @@ export function Trips() {
           open={detailOpen}
           onEntered={handleDetailEntered}
           onExited={handleDetailExited}
-          animateEnter={false}
           zIndex={16}
         >
-          <RouteDetailPanel variant={activeTrip.variant} onClose={closeDetail} hideSave />
+          <TripRoutePanel
+            trip={activeTrip}
+            onClose={closeDetail}
+            onTripChange={handleTripChange}
+            onDeleted={handleTripDeleted}
+          />
         </SlideOverlay>
       ) : null}
     </Flex>

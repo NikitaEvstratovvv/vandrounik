@@ -41,8 +41,9 @@ Profile section overview: [`304:2279`](https://www.figma.com/design/mAysLALLcMDA
 | BS1 Duration | implemented | `148:447` | `src/components/DurationSheet.tsx` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=148-447) |
 | L1 Loading | implemented | `149:838` | `src/pages/Loading.tsx` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=149-838) |
 | E2 Results | implemented | `215:907` / preview sheet `216:1056` | `src/pages/Results.tsx` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=216-1056) |
-| E3 Route detail | implemented | **TBD** | `src/pages/RouteDetail.tsx` | — (no node in code comment; deep-link only) |
+| E3 Route detail | implemented | **TBD** (generation deep-link) | `src/pages/RouteDetail.tsx` | — (plan `/plan/results/:variantId` only) |
 | E4 Route saved | implemented | `301:1140` | `src/pages/RouteSaved.tsx` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=301-1140) |
+| E6 Trip route | implemented | section `305:2280` / idle `305:2281` / map `305:2355` / active `305:2722` / place `306:1997` / delete `305:2665` / menu `317:1883` / cancel `317:1963` / done `305:2410` | `src/pages/TripRoute.tsx` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=305-2280) |
 
 ## Components / fragments
 
@@ -62,6 +63,8 @@ Profile section overview: [`304:2279`](https://www.figma.com/design/mAysLALLcMDA
 | Route details sheet | `217:948` / frame `216:1056` | `RouteDetailsSheet.tsx` |
 | Map export chips | `272:1091` / `272:1097` | `RouteDetailsSheet.tsx` |
 | Stop row | `217:1014` | `StopRow.tsx` |
+| Trip stop row | `305:2309` / active `305:2750` / stepper `306:1601` | `TripStopRow.tsx` |
+| Trip place sheet | `306:1997` | `TripPlaceSheet.tsx` |
 | Map zoom | `217:1100` / `217:1101` | `MapZoomControls.tsx` |
 | Place popover | `220:1326` | `PlacePopover.tsx` |
 | Waypoint marker | `263:808` | `map/MapWaypointMarker.tsx` |

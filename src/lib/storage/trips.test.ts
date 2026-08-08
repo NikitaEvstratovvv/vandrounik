@@ -1,5 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { getTrip, loadTrips, saveTrip, setTripStatus } from '@/lib/storage/trips'
+import {
+  cancelTrip,
+  deleteTrip,
+  getTrip,
+  loadTrips,
+  saveTrip,
+  setTripStatus,
+  toggleTripVisited,
+  tripVisitedIds,
+} from '@/lib/storage/trips'
+import { loadVisitedPlaceIds } from '@/lib/storage/visited'
 import type { RouteVariant } from '@/types'
 
 function installMemoryStorage() {
@@ -60,30 +70,71 @@ afterEach(() => {
 })
 
 describe('trips storage', () => {
-  it('saves and upserts by variant id', () => {
-    const first = saveTrip(variant('v1', 'One'))
-    expect(first.id).toBe('v1')
-    expect(loadTrips()).toHaveLength(1)
+  it('appends a new trip with unique id even for the same variant.id', () => {
+    const first = saveTrip(variant('variant-1', 'One'))
+    const second = saveTrip(variant('variant-1', 'One updated'))
 
-    saveTrip(variant('v1', 'One updated'))
+    expect(first.id).not.toBe('variant-1')
+    expect(second.id).not.toBe(first.id)
+    expect(first.variant.id).toBe('variant-1')
+    expect(second.variant.id).toBe('variant-1')
+
     const trips = loadTrips()
-    expect(trips).toHaveLength(1)
+    expect(trips).toHaveLength(2)
     expect(trips[0].variant.title).toBe('One updated')
-    expect(getTrip('v1')?.variant.title).toBe('One updated')
+    expect(trips[1].variant.title).toBe('One')
+    expect(getTrip(first.id)?.variant.title).toBe('One')
+    expect(getTrip(second.id)?.variant.title).toBe('One updated')
   })
 
   it('prepends newest trip', () => {
-    saveTrip(variant('v1', 'One'))
-    saveTrip(variant('v2', 'Two'))
-    expect(loadTrips().map((t) => t.id)).toEqual(['v2', 'v1'])
+    const a = saveTrip(variant('v1', 'One'))
+    const b = saveTrip(variant('v2', 'Two'))
+    expect(loadTrips().map((t) => t.id)).toEqual([b.id, a.id])
   })
 
-  it('defaults status to new and keeps it on upsert', () => {
+  it('defaults status to new on each save', () => {
     const first = saveTrip(variant('v1', 'One'))
     expect(first.status).toBe('new')
 
-    setTripStatus('v1', 'in-progress')
+    setTripStatus(first.id, 'in-progress')
     const again = saveTrip(variant('v1', 'One updated'))
-    expect(again.status).toBe('in-progress')
+    expect(again.status).toBe('new')
+    expect(getTrip(first.id)?.status).toBe('in-progress')
+  })
+
+  it('toggles per-trip visited and syncs global on mark only', () => {
+    const trip = saveTrip(variant('v1', 'One'))
+    toggleTripVisited(trip.id, 'a')
+    expect(tripVisitedIds(getTrip(trip.id)!).has('a')).toBe(true)
+    expect(loadVisitedPlaceIds().has('a')).toBe(true)
+
+    toggleTripVisited(trip.id, 'a')
+    expect(tripVisitedIds(getTrip(trip.id)!).has('a')).toBe(false)
+    expect(loadVisitedPlaceIds().has('a')).toBe(true)
+  })
+
+  it('deletes a trip', () => {
+    const a = saveTrip(variant('v1', 'One'))
+    const b = saveTrip(variant('v2', 'Two'))
+    expect(deleteTrip(a.id)).toBe(true)
+    expect(loadTrips().map((t) => t.id)).toEqual([b.id])
+    expect(deleteTrip('missing')).toBe(false)
+  })
+
+  it('cancels trip: status new and clears visited', () => {
+    const trip = saveTrip(variant('v1', 'One'))
+    setTripStatus(trip.id, 'in-progress')
+    toggleTripVisited(trip.id, 'a')
+    const cancelled = cancelTrip(trip.id)
+    expect(cancelled?.status).toBe('new')
+    expect(tripVisitedIds(cancelled!).size).toBe(0)
+    expect(loadVisitedPlaceIds().has('a')).toBe(true)
+  })
+
+  it('persists trip so loadTrips returns it after save', () => {
+    const trip = saveTrip(variant('persist', 'Persisted'))
+    expect(loadTrips().some((t) => t.id === trip.id)).toBe(true)
+    expect(getTrip(trip.id)?.variant.title).toBe('Persisted')
   })
 })
