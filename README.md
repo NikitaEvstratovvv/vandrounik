@@ -2,7 +2,8 @@
 
 PWA для планирования автопутешествий по Беларуси: генерация маршрутов и трекер «был здесь».
 
-Спеки: `Design Process/projects/Vandrounik/05-ui/` (синхронизированы с этим репозиторием).
+- **UI spec (implementation):** [docs/ui/](docs/ui/) — канон для реализованных экранов
+- **Figma (новые / redesign):** [Vandrounik-design](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=64-208)
 
 ## Стек
 
@@ -34,30 +35,44 @@ npm run dev
 ## Реализованный flow (v1)
 
 ```
-E0 Splash (/)
-  → E1 Хаб (/plan)
-      ├── S1  Выбор направления     overlay  /plan/location?point=origin|destination
-      ├── S2  Что посмотреть        overlay  /plan/interests
-      ├── BS1 Длительность          sheet (state)
-      └── L1  Загрузка              /plan/loading
-            → E2  Выбор маршрута    overlay  /plan/results
-                → E3  Детали        overlay  /plan/results/:variantId
+A0 Auth email (/)
+  → A1 Код (/auth/code)
+      → TabShell
+          ├── E1 Создать (/plan)          + меню
+          ├── E5 Мои маршруты (/trips)    + меню
+          │     └── E3 детали             overlay  /trips/:tripId
+          └── Профиль (/profile)          + меню
+                ├── Настройки             /profile/settings
+                ├── Фото / Имя / Почта    /profile/settings/…
+                E1 overlays (без меню):
+                ├── S1  Выбор направления     overlay  /plan/location?point=…
+                ├── S2  Что посмотреть        overlay  /plan/interests
+                ├── BS1 Длительность          sheet (state)
+                └── L1  Загрузка              /plan/loading
+                      → E2  Выбор маршрута    overlay  /plan/results
+                          → sheet preview → Сохранить
+                          → E4  Сохранён      overlay  /plan/results/saved?id=
+                          → E3  Детали        overlay  /plan/results/:variantId (deep-link)
 ```
 
-Архитектура: `Plan.tsx` рендерит overlay-панели по URL; child routes — для deep-link.
+Авторизация пока **mock** (`localStorage`): email (+ валидация красным под полем) → код (≥4 символа), либо «Войти через Google». Authenticated routes закрыты без сессии. Нижнее меню (Создать / Мои маршруты / Профиль) — только на корневых табах. Подробнее: [docs/ui/navigation.md](docs/ui/navigation.md).
 
 ### Экраны
 
 | ID | Файл | Назначение |
 |----|------|------------|
-| E0 | `src/pages/Splash.tsx` | Splash, авто-переход на /plan |
+| A0 | `src/pages/Auth.tsx` | Email + Google (вместо Splash) |
+| A1 | `src/pages/Auth.tsx` | Код из письма (mock) |
 | E1 | `src/pages/Plan.tsx` | Хаб: транспорт, направление, интересы, длительность |
+| E5 | `src/pages/Trips.tsx` | Мои маршруты (пусто / список / деталь) |
+| E8 | `src/pages/Profile.tsx` | Профиль + настройки (фото / имя / почта) |
 | S1 | `src/pages/Location.tsx` | Поиск Nominatim (откуда/куда) |
-| S2 | `src/pages/Interests.tsx` | 4 категории интересов |
+| S2 | `src/pages/Interests.tsx` | 5 категорий интересов |
 | BS1 | `src/components/DurationSheet.tsx` | Длительность (часы / км) |
 | L1 | `src/pages/Loading.tsx` | Генерация маршрута (OSRM) |
-| E2 | `src/pages/Results.tsx` | Карта + 3 варианта маршрута |
-| E3 | `src/pages/RouteDetail.tsx` | Список остановок, «был здесь» |
+| E2 | `src/pages/Results.tsx` | Карта + 3 варианта; preview-sheet → сохранить |
+| E3 | `src/pages/RouteDetail.tsx` | Список остановок, «был здесь» (deep-link) |
+| E4 | `src/pages/RouteSaved.tsx` | Успех после сохранения маршрута |
 
 ### Генерация маршрута
 
@@ -74,18 +89,19 @@ E0 Splash (/)
 
 ### Состояние
 
+- Auth (mock): `src/lib/storage/auth.ts` → `vandrounik.auth.session.v1` / `vandrounik.auth.pending.v1`
 - Wizard: `src/store/wizard.tsx` → `localStorage` `vandrounik.wizard.v1`
 - Результат генерации: `src/lib/storage/generation.ts` → `vandrounik.generation.v3`
+- Сохранённые поездки: `src/lib/storage/trips.ts` → `vandrounik.trips.v1`
 - Visited: `src/lib/storage/visited.ts`
 
 ## Дизайн-токены
 
-`src/theme/system.ts` — neutral palette, Inter + Oswald. См. `Design Process/.../05-ui/design-tokens.md`.
+`src/theme/system.ts` — neutral palette, Inter + Oswald. Спека: [docs/ui/design-tokens.md](docs/ui/design-tokens.md). Figma nodes: [docs/ui/figma-nodes.md](docs/ui/figma-nodes.md).
 
 ## Не реализовано (v2+)
 
-- Tab bar (План / Поездки / Каталог / Профиль)
-- Сохранение поездки (E3 — stub)
-- E4 карточка места, E5/E6 поездки, E7 каталог, E8/E9 профиль
-- Внешний навигатор (Яндекс / Google)
+- Статусы поездки «В пути» / «Завершен» (UI бейджей есть, смена статуса — позже); E6 и далее
+- Каталог (E7); удаление аккаунта / CDN аватаров
+- E3 карточка места
 - Push, шаринг маршрута

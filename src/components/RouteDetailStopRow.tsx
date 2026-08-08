@@ -1,5 +1,5 @@
 import { chakra, Flex, Text } from '@chakra-ui/react'
-import { CheckIcon } from '@/components/icons'
+import { CheckIcon, FlagIcon } from '@/components/icons'
 import { formatDriveMinutes } from '@/lib/format'
 import { formatPlaceTypeLabel } from '@/data/placeTaxonomy'
 import { routeStopLabel } from '@/lib/routing/routeStops'
@@ -52,18 +52,41 @@ export function RouteDetailStopRow({
       <Flex
         minW="28px"
         h="28px"
-        px="6px"
+        px={stop.placeId === 'origin' || stop.placeId === 'destination' ? '0' : '6px'}
         flexShrink={0}
         align="center"
         justifyContent="center"
-        bg={visited ? 'primary' : 'secondary'}
-        color={visited ? 'primaryFg' : 'primary'}
+        bg={
+          stop.placeId === 'origin'
+            ? 'primary'
+            : stop.placeId === 'destination'
+              ? 'secondary'
+              : visited
+                ? 'primary'
+                : 'secondary'
+        }
+        color={
+          stop.placeId === 'origin'
+            ? 'primaryFg'
+            : stop.placeId === 'destination'
+              ? 'primary'
+              : visited
+                ? 'primaryFg'
+                : 'primary'
+        }
         borderRadius="12px"
         transition="background 150ms, color 150ms"
+        aria-label={
+          stop.placeId === 'origin' ? 'Старт' : stop.placeId === 'destination' ? 'Финиш' : undefined
+        }
       >
-        <Text fontSize="xs" fontWeight="semibold" lineHeight="1">
-          {routeStopLabel(stop)}
-        </Text>
+        {stop.placeId === 'origin' || stop.placeId === 'destination' ? (
+          <FlagIcon size={14} />
+        ) : (
+          <Text fontSize="xs" fontWeight="semibold" lineHeight="1">
+            {routeStopLabel(stop)}
+          </Text>
+        )}
       </Flex>
 
       <Flex direction="column" gap="2px" flex="1" minW="0">

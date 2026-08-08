@@ -10,15 +10,20 @@ import { formatRouteSummarySm } from '@/lib/format'
 import { isRoutePlaceStop, routePlaceStops } from '@/lib/routing/routeStops'
 import { loadGeneration } from '@/lib/storage/generation'
 import { loadVisitedPlaceIds, toggleVisitedPlace } from '@/lib/storage/visited'
+import type { RouteVariant } from '@/types'
 
 const SAVE_HINT_MS = 2400
 
 type RouteDetailPanelProps = {
   onClose: () => void
+  /** Когда передан (E5), не ищем вариант в generation и не редиректим. */
+  variant?: RouteVariant
+  /** Скрыть CTA «Сохранить» — маршрут уже в «Мои маршруты». */
+  hideSave?: boolean
 }
 
-/** E3 — финальный экран выбранного маршрута (оверлей поверх E2). */
-export function RouteDetailPanel({ onClose }: RouteDetailPanelProps) {
+/** E3 — финальный экран выбранного маршрута (оверлей поверх E2 / E5). */
+export function RouteDetailPanel({ onClose, variant: variantProp, hideSave = false }: RouteDetailPanelProps) {
   const navigate = useNavigate()
   const detailMatch = useMatch('/plan/results/:variantId')
   const variantId = detailMatch?.params.variantId
@@ -26,7 +31,8 @@ export function RouteDetailPanel({ onClose }: RouteDetailPanelProps) {
   const mapRef = useRef<InteractiveRouteMapRef>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
-  const variant = generation?.variants.find((v) => v.id === variantId)
+  const variantFromGeneration = generation?.variants.find((v) => v.id === variantId)
+  const variant = variantProp ?? variantFromGeneration
 
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null)
   const [visitedIds, setVisitedIds] = useState(() => loadVisitedPlaceIds())
@@ -34,11 +40,12 @@ export function RouteDetailPanel({ onClose }: RouteDetailPanelProps) {
   const saveHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    if (variantProp) return
     if (!variantId) return
     if (!generation || !variant) {
       navigate('/plan/results', { replace: true })
     }
-  }, [generation, variant, variantId, navigate])
+  }, [generation, variant, variantId, navigate, variantProp])
 
   useEffect(
     () => () => {
@@ -65,7 +72,7 @@ export function RouteDetailPanel({ onClose }: RouteDetailPanelProps) {
       ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [])
 
-  if (!variantId || !generation || !variant) {
+  if (!variant) {
     return null
   }
 
@@ -73,7 +80,7 @@ export function RouteDetailPanel({ onClose }: RouteDetailPanelProps) {
   const visitedOnRoute = routePlaces.filter((s) => visitedIds.has(s.placeId)).length
 
   return (
-    <Flex direction="column" h="full" minH="0">
+    <Flex direction="column" h="full" minH="0" bg="screen">
       <Header variant="back" title={variant.title} onBack={onClose} />
 
       <Flex direction="column" flex="1" minH="0">
@@ -146,31 +153,33 @@ export function RouteDetailPanel({ onClose }: RouteDetailPanelProps) {
           </Flex>
         </Box>
 
-        <Box
-          flexShrink={0}
-          px="16px"
-          py="16px"
-          borderTopWidth="1px"
-          borderColor="line"
-          bg="background"
-        >
-          {saveHint ? (
-            <Text
-              fontSize="xs"
-              lineHeight="xs"
-              color="muted"
-              textAlign="center"
-              mb="8px"
-              css={{
-                animation: 'vandr-fade-in 200ms ease-out',
-                '@keyframes vandr-fade-in': { from: { opacity: 0 }, to: { opacity: 1 } },
-              }}
-            >
-              Сохранение маршрута появится в следующей версии
-            </Text>
-          ) : null}
-          <PrimaryButton onClick={handleSaveStub}>Сохранить маршрут</PrimaryButton>
-        </Box>
+        {hideSave ? null : (
+          <Box
+            flexShrink={0}
+            px="16px"
+            py="16px"
+            borderTopWidth="1px"
+            borderColor="line"
+            bg="background"
+          >
+            {saveHint ? (
+              <Text
+                fontSize="xs"
+                lineHeight="xs"
+                color="muted"
+                textAlign="center"
+                mb="8px"
+                css={{
+                  animation: 'vandr-fade-in 200ms ease-out',
+                  '@keyframes vandr-fade-in': { from: { opacity: 0 }, to: { opacity: 1 } },
+                }}
+              >
+                Сохранение маршрута появится в следующей версии
+              </Text>
+            ) : null}
+            <PrimaryButton onClick={handleSaveStub}>Сохранить маршрут</PrimaryButton>
+          </Box>
+        )}
       </Flex>
     </Flex>
   )

@@ -1,6 +1,6 @@
 import { Box, Flex } from '@chakra-ui/react'
 import { useId } from 'react'
-import { RacingFlagIcon } from '@/components/icons'
+import { FlagIcon } from '@/components/icons'
 import { isRouteEndpoint, routeStopLabel } from '@/lib/routing/routeStops'
 import type { RouteStop } from '@/types'
 
@@ -162,7 +162,7 @@ export function MapWaypointMarker({ stop, isSelected }: MapWaypointMarkerProps) 
             color="primaryFg"
             pointerEvents="none"
           >
-            <RacingFlagIcon size={16} />
+            <FlagIcon size={14} />
           </Box>
         </Box>
         <Box position="relative" w="24px" h="4px" flexShrink={0} overflow="visible">

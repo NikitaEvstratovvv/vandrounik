@@ -1,0 +1,6 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Figma 272:1107 — circle + tabler/brand-yandex (both vectors) -->
+  <rect width="24" height="24" rx="12" fill="#0A0A0A"/>
+  <path d="M14.5 18.6668V5.3335H12.8333C11.9493 5.3335 11.1014 5.68469 10.4763 6.30981C9.85119 6.93493 9.5 7.78277 9.5 8.66683V9.50016C9.5 10.3842 9.85119 11.2321 10.4763 11.8572C11.1014 12.4823 11.9493 12.8335 12.8333 12.8335H14.5" stroke="white" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M9.5 18.6668L12 12.8335" stroke="white" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

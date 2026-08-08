@@ -3,9 +3,10 @@ import type { ReactNode } from 'react'
 
 type PrimaryButtonProps = {
   children: ReactNode
-  onClick: () => void
+  onClick?: () => void
   disabled?: boolean
   variant?: 'primary' | 'secondary'
+  type?: 'button' | 'submit'
 }
 
 /**
@@ -13,10 +14,17 @@ type PrimaryButtonProps = {
  * 1:1 с Figma (node 137:213 / 147:700).
  * variant="secondary" — outlined, bg прозрачный.
  */
-export function PrimaryButton({ children, onClick, disabled = false, variant = 'primary' }: PrimaryButtonProps) {
+export function PrimaryButton({
+  children,
+  onClick,
+  disabled = false,
+  variant = 'primary',
+  type = 'button',
+}: PrimaryButtonProps) {
   const isPrimary = variant === 'primary'
   return (
     <chakra.button
+      type={type}
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       w="full"

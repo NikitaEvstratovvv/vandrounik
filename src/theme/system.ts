@@ -18,6 +18,7 @@ const config = defineConfig({
         secondaryFg: { value: '#0a0a0a' }, // --secondary-foreground
         muted: { value: '#737373' }, // --muted-foreground
         line: { value: '#e5e5e5' }, // --border
+        destructive: { value: '#dc2626' }, // --destructive (ошибки форм / auth)
         screen: { value: '#f6f6f6' }, // фон холста экрана (frame bg)
         canvas: { value: '#000000' }, // фон вне приложения (десктоп / поля viewport)
       },
@@ -52,13 +53,16 @@ const config = defineConfig({
         btn: { value: '10px' }, // radius-lg (квадратные кнопки 36px)
         seg: { value: '16px' }, // активный сегмент
         card: { value: '20px' }, // карточки / основной CTA
-        sheet: { value: '24px' }, // верхние углы bottom sheet
+        sheet: { value: '24px' }, // верхние углы bottom sheet / active tab item
+        tab: { value: '28px' }, // нижний tab bar (Figma 271:1247)
         pill: { value: '32px' }, // поля ввода (поиск, длительность)
         full: { value: '999px' },
       },
       shadows: {
         // Box Shadow/shadow-xs из Figma
         xs: { value: '0px 1px 2px 0px rgba(0,0,0,0.1)' },
+        // Tab bar — Figma 271:1247
+        tab: { value: '0px 1px 3px 0px rgba(0,0,0,0.1)' },
         // Box Shadow/shadow-lg из Figma (карточки E2, поповеры)
         lg: {
           value:

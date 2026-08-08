@@ -11,6 +11,7 @@ import { RouteVariantPanel } from '@/components/RouteVariantPanel'
 import { SheetOverlay } from '@/components/SheetOverlay'
 import { isRoutePlaceStop } from '@/lib/routing/routeStops'
 import { loadGeneration } from '@/lib/storage/generation'
+import { saveTrip, type SavedTrip } from '@/lib/storage/trips'
 import { mapFrostedGradientLayer } from '@/theme/mapOverlay'
 import type { RouteStop } from '@/types'
 
@@ -21,11 +22,11 @@ type OverlayState =
 
 type ResultsPanelProps = {
   onClose: () => void
-  onSelectRoute: (variantId: string) => void
+  onRouteSaved: (trip: SavedTrip) => void
 }
 
-/** E2 — Выбор маршрута. 1:1 с Figma (node 215:907). */
-export function ResultsPanel({ onClose, onSelectRoute }: ResultsPanelProps) {
+/** E2 — Выбор маршрута. 1:1 с Figma (node 215:907 / sheet 216:1056). */
+export function ResultsPanel({ onClose, onRouteSaved }: ResultsPanelProps) {
   const navigate = useNavigate()
   const generation = loadGeneration()
   const [variantIndex, setVariantIndex] = useState(0)
@@ -80,6 +81,16 @@ export function ResultsPanel({ onClose, onSelectRoute }: ResultsPanelProps) {
       return
     }
     setOverlay({ type: 'none' })
+  }
+
+  const openRoutePreview = () => setOverlay({ type: 'route' })
+
+  const handleSave = () => {
+    if (!generation) return
+    const variant = generation.variants[variantIndex] ?? generation.variants[0]
+    const trip = saveTrip(variant, generation.params)
+    closeRouteSheet()
+    onRouteSaved(trip)
   }
 
   if (!generation || generation.variants.length === 0) {
@@ -191,7 +202,7 @@ export function ResultsPanel({ onClose, onSelectRoute }: ResultsPanelProps) {
               index={variantIndex}
               onPrev={goPrev}
               onNext={goNext}
-              onCardClick={() => setOverlay({ type: 'route' })}
+              onCardClick={openRoutePreview}
             />
           </Box>
         </Box>
@@ -222,9 +233,7 @@ export function ResultsPanel({ onClose, onSelectRoute }: ResultsPanelProps) {
             {...mapFrostedGradientLayer.bottom}
           />
           <Box position="relative" zIndex={1} w="full">
-            <PrimaryButton onClick={() => onSelectRoute(variant.id)}>
-              Выбрать
-            </PrimaryButton>
+            <PrimaryButton onClick={openRoutePreview}>Выбрать</PrimaryButton>
           </Box>
         </Box>
       </Flex>
@@ -247,7 +256,7 @@ export function ResultsPanel({ onClose, onSelectRoute }: ResultsPanelProps) {
         variant={variant}
         onClose={closeRouteSheet}
         onExited={handleRouteSheetExited}
-        onSelect={() => onSelectRoute(variant.id)}
+        onSave={handleSave}
       />
     </>
   )

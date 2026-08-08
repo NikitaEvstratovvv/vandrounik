@@ -1,0 +1,32 @@
+---
+description: Use Chakra semantic tokens from theme/system.ts — no hardcoded theme colors, radii, or shadows in UI.
+globs: src/components/**/*.{ts,tsx},src/pages/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Chakra tokens (Vandrounik)
+
+Theme: `src/theme/system.ts`. Spec: `docs/ui/design-tokens.md`.
+
+## Do
+
+- Colors: `background`, `foreground`, `primary`, `primaryFg`, `secondary`, `secondaryFg`, `muted`, `line`, `destructive`, `screen`, `canvas`
+- Radii: `checkbox`, `sm`, `btn`, `seg`, `card`, `sheet`, `tab`, `pill`, `full`
+- Shadows: `xs`, `tab`, `lg`, `btn`, `check`
+- Fonts: `body` (Inter), `heading` (Oswald)
+- Font sizes / weights / lineHeights from the theme tokens
+
+```tsx
+// ✅ GOOD
+<chakra.button bg="primary" color="primaryFg" borderRadius="card" boxShadow="btn" />
+```
+
+```tsx
+// ❌ BAD
+<chakra.button bg="#171717" color="#fafafa" borderRadius="20px" />
+```
+
+## Exceptions
+
+- Map frost / splash blur may use `rgba` + `backdropFilter` (see `src/theme/mapOverlay.ts`).
+- If Figma needs a new value, add a token in `system.ts` and document in `docs/ui/design-tokens.md` — do not sprinkle hex in JSX.

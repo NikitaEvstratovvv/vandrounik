@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { Box, Flex, Text, VStack } from '@chakra-ui/react'
+import { Box, Flex, Image, Text, VStack, chakra } from '@chakra-ui/react'
 import { CloseIcon } from '@/components/icons'
 import { PrimaryButton } from '@/components/PrimaryButton'
 import { SquareButton } from '@/components/SquareButton'
 import { StopRow } from '@/components/StopRow'
 import { formatPlacesCount, formatTripMinutes } from '@/lib/format'
+import {
+  googleMapsRouteUrl,
+  openExternalMap,
+  yandexMapsRouteUrl,
+} from '@/lib/maps/externalMaps'
 import { routePlacesCount } from '@/lib/routing/routeStops'
 import type { RouteVariant } from '@/types'
 
@@ -17,7 +22,7 @@ type RouteDetailsSheetProps = {
   variant: RouteVariant
   onClose: () => void
   onExited: () => void
-  onSelect: () => void
+  onSave: () => void
 }
 
 function MetricDot() {
@@ -28,8 +33,47 @@ function MetricDot() {
   )
 }
 
-/** Шит деталей маршрута (Figma node 217:948). */
-export function RouteDetailsSheet({ open, variant, onClose, onExited, onSelect }: RouteDetailsSheetProps) {
+type MapChipProps = {
+  label: string
+  iconSrc: string
+  onClick: () => void
+}
+
+/** Pill chip — Figma 272:1091 / 272:1097. Icon is full 24×24 mark (circle + glyph). */
+function MapChip({ label, iconSrc, onClick }: MapChipProps) {
+  return (
+    <chakra.button
+      type="button"
+      onClick={onClick}
+      display="inline-flex"
+      alignItems="center"
+      justifyContent="center"
+      gap="6px"
+      h="36px"
+      pl="6px"
+      pr="12px"
+      bg="background"
+      borderWidth="1px"
+      borderStyle="solid"
+      borderColor="line"
+      borderRadius="20px"
+      cursor="pointer"
+      flexShrink={0}
+      transition="opacity 150ms, border-color 150ms"
+      _hover={{ opacity: 0.85 }}
+    >
+      <Box boxSize="24px" flexShrink={0} overflow="hidden" borderRadius="full">
+        <Image src={iconSrc} alt="" w="24px" h="24px" display="block" />
+      </Box>
+      <Text fontSize="sm" fontWeight="medium" lineHeight="sm" color="foreground" whiteSpace="nowrap">
+        {label}
+      </Text>
+    </chakra.button>
+  )
+}
+
+/** Шит деталей маршрута (Figma node 217:948 / frame 216:1056). */
+export function RouteDetailsSheet({ open, variant, onClose, onExited, onSave }: RouteDetailsSheetProps) {
   const [visible, setVisible] = useState(false)
   const [motionReady, setMotionReady] = useState(false)
   const onExitedRef = useRef(onExited)
@@ -119,6 +163,26 @@ export function RouteDetailsSheet({ open, variant, onClose, onExited, onSelect }
         </SquareButton>
       </Flex>
 
+      <Flex
+        flexWrap="wrap"
+        gap="8px"
+        px="16px"
+        pb="12px"
+        flexShrink={0}
+        align="flex-start"
+      >
+        <MapChip
+          label="Яндекс карта"
+          iconSrc="/figma/map-yandex.svg"
+          onClick={() => openExternalMap(yandexMapsRouteUrl(variant.stops))}
+        />
+        <MapChip
+          label="Google map"
+          iconSrc="/figma/map-google.svg"
+          onClick={() => openExternalMap(googleMapsRouteUrl(variant.stops))}
+        />
+      </Flex>
+
       <Box flex="0 1 auto" minH={0} overflowY="auto" overscrollBehavior="contain">
         {variant.stops.map((stop) => (
           <StopRow key={`${stop.placeId}-${stop.order}`} stop={stop} />
@@ -126,7 +190,7 @@ export function RouteDetailsSheet({ open, variant, onClose, onExited, onSelect }
       </Box>
 
       <Box p="8px" flexShrink={0}>
-        <PrimaryButton onClick={onSelect}>Выбрать</PrimaryButton>
+        <PrimaryButton onClick={onSave}>Сохранить</PrimaryButton>
       </Box>
     </Box>
   )
