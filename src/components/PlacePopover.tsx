@@ -58,7 +58,6 @@ function OutlinePillButton({ children, onClick }: { children: string; onClick: (
   return (
     <Box
       as="button"
-      type="button"
       onClick={onClick}
       h="36px"
       px="16px"

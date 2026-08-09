@@ -58,7 +58,6 @@ export function TripCard({ trip, onSelect }: TripCardProps) {
   return (
     <Box
       as="button"
-      type="button"
       w="full"
       flexShrink={0}
       textAlign="left"
