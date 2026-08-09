@@ -62,7 +62,11 @@ export function LocationPanel({ point, onClose, focusSeq = 0 }: LocationPanelPro
         let found = await searchPlaces(q, { near })
         if (current !== reqId.current) return
         if (point === 'destination' && state.origin && found.length > 0) {
-          found = await fetchRoadDistancesFromOrigin(state.origin, found, state.transport)
+          try {
+            found = await fetchRoadDistancesFromOrigin(state.origin, found, state.transport)
+          } catch {
+            // Distances are optional — keep geocode results if OSRM is down.
+          }
           if (current !== reqId.current) return
         }
         setResults(found)

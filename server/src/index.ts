@@ -13,7 +13,7 @@ import { tripsRoutes } from './trips/routes.js'
 import { visitedRoutes } from './visited/routes.js'
 import { proxyRequest } from './proxy.js'
 
-const NOMINATIM_UA = 'Vandrounik/0.1.0 (travel PWA)'
+const NOMINATIM_UA = 'Vandrounik/0.1.0 (https://vandrounik.of.by; travel PWA)'
 
 getDb()
 
