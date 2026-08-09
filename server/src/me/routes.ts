@@ -1,7 +1,13 @@
 import { Hono } from 'hono'
 import { ApiError } from '../errors.js'
+import {
+  assertAllowed,
+  issueEmailChallenge,
+  normalizeEmail,
+  verifyEmailChallenge,
+} from '../auth/challenge.js'
 import { requireAuth, type AuthVars } from '../auth/middleware.js'
-import { updateUser, type ProfileAvatar } from '../users/repo.js'
+import { findUserByEmail, updateUser, updateUserEmail, type ProfileAvatar } from '../users/repo.js'
 
 const PRESET_IDS = new Set(['stork', 'fox', 'bison', 'frog', 'snake', 'beaver', 'mouse'])
 
@@ -46,5 +52,51 @@ meRoutes.patch('/', async (c) => {
     avatar,
   })
   if (!updated) throw new ApiError(404, 'not_found', 'Пользователь не найден')
+  return c.json(updated)
+})
+
+meRoutes.post('/email/start', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const email = normalizeEmail((body as { email?: unknown }).email)
+  const user = c.get('user')
+
+  if (email === user.email) {
+    throw new ApiError(400, 'validation_error', 'Укажите новую почту')
+  }
+  assertAllowed(email)
+
+  const taken = findUserByEmail(email)
+  if (taken && taken.id !== user.id) {
+    throw new ApiError(409, 'conflict', 'Эта почта уже занята')
+  }
+
+  await issueEmailChallenge(email, 'email_change')
+  return c.json({ ok: true })
+})
+
+meRoutes.post('/email/verify', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const email = normalizeEmail((body as { email?: unknown }).email)
+  const user = c.get('user')
+
+  if (email === user.email) {
+    throw new ApiError(400, 'validation_error', 'Укажите новую почту')
+  }
+  assertAllowed(email)
+
+  const taken = findUserByEmail(email)
+  if (taken && taken.id !== user.id) {
+    throw new ApiError(409, 'conflict', 'Эта почта уже занята')
+  }
+
+  verifyEmailChallenge(email, (body as { code?: unknown }).code)
+
+  const updated = updateUserEmail(user.id, email)
+  if (!updated) {
+    // Race: email claimed after challenge, or user deleted.
+    const stillExists = findUserByEmail(email)
+    if (stillExists) throw new ApiError(409, 'conflict', 'Эта почта уже занята')
+    throw new ApiError(404, 'not_found', 'Пользователь не найден')
+  }
   return c.json(updated)
 })

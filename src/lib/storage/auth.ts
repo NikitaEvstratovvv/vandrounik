@@ -102,7 +102,6 @@ export async function updateSession(
   const current = loadSession()
   if (!current) return null
 
-  // Email change stays local-pending until /me/email API exists; profile name/photo hit API.
   if (patch.displayName !== undefined || patch.avatar !== undefined) {
     try {
       const user = await apiFetch<ApiUser>('/me', {
@@ -114,10 +113,6 @@ export async function updateSession(
       })
       const session = userToSession(user)
       saveSession(session)
-      if (patch.email) {
-        session.email = patch.email.trim().toLowerCase()
-        saveSession(session)
-      }
       return session
     } catch {
       // fall through to local cache update if API unavailable
@@ -134,6 +129,25 @@ export async function updateSession(
   }
   saveSession(next)
   return next
+}
+
+export async function startEmailChange(email: string): Promise<void> {
+  await apiFetch<{ ok: true }>('/me/email/start', {
+    method: 'POST',
+    body: JSON.stringify({ email: email.trim().toLowerCase() }),
+  })
+  saveEmailChangePending(email)
+}
+
+export async function verifyEmailChange(email: string, code: string): Promise<AuthSession> {
+  const user = await apiFetch<ApiUser>('/me/email/verify', {
+    method: 'POST',
+    body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }),
+  })
+  const session = userToSession(user)
+  saveSession(session)
+  clearEmailChangePending()
+  return session
 }
 
 export function clearSession(): void {

@@ -92,3 +92,19 @@ export function updateUser(
     .run(next.displayName, JSON.stringify(next.avatar), id)
   return next
 }
+
+export function updateUserEmail(id: string, email: string): User | null {
+  const current = findUserById(id)
+  if (!current) return null
+  const normalized = email.trim().toLowerCase()
+  try {
+    getDb().prepare('UPDATE users SET email = ? WHERE id = ?').run(normalized, id)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (message.includes('UNIQUE')) {
+      return null
+    }
+    throw error
+  }
+  return { ...current, email: normalized }
+}

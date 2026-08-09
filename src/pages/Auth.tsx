@@ -7,7 +7,6 @@ import {
   AuthForm,
   AuthShell,
   AuthSubmit,
-  GoogleAuthButton,
 } from '@/components/AuthShell'
 import { RedirectIfAuthed } from '@/components/RequireAuth'
 import { ApiClientError } from '@/lib/api/client'
@@ -69,9 +68,6 @@ export function AuthEmailPage() {
             {submitError ? <AuthFieldError>{submitError}</AuthFieldError> : null}
           </Flex>
           <AuthSubmit disabled={busy} />
-          <GoogleAuthButton
-            onClick={() => setSubmitError('Вход через Google скоро будет доступен')}
-          />
         </AuthForm>
       </AuthShell>
     </RedirectIfAuthed>
@@ -135,9 +131,6 @@ export function AuthCodePage() {
           />
           {submitError ? <AuthFieldError>{submitError}</AuthFieldError> : null}
           <AuthSubmit disabled={busy} />
-          <GoogleAuthButton
-            onClick={() => setSubmitError('Вход через Google скоро будет доступен')}
-          />
         </AuthForm>
       </AuthShell>
     </RedirectIfAuthed>

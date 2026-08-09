@@ -27,6 +27,8 @@ npm run dev                   # Vite :5173 (проксирует /api/v1)
 
 Вход: email → код. В dev без Resend код в логе API (по умолчанию `0000`). Подробнее: [server/README.md](server/README.md), контракт [docs/api.md](docs/api.md).
 
+**Деплой (Railway):** [docs/deploy.md](docs/deploy.md).
+
 ## Скрипты
 
 | Команда | Что делает |
@@ -113,4 +115,4 @@ A0 Auth email (/)
 - Google OAuth; удаление аккаунта / CDN аватаров
 - Каталог (E7)
 - Push, шаринг маршрута
-- Деплой / свой домен для Resend
+- Кастомный домен / верификация Resend (база деплоя: [docs/deploy.md](docs/deploy.md))

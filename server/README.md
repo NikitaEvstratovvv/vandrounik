@@ -33,18 +33,22 @@ Health: `GET /api/v1/health`
 | `ACCESS_TTL_SECONDS` | TTL access (900) |
 | `REFRESH_TTL_SECONDS` | TTL refresh (30d) |
 | `RESEND_API_KEY` | Если задан — письма через Resend |
-| `EMAIL_FROM` | From для Resend |
-| `DEV_LOGIN_CODE` | Фиксированный код без Resend |
+| `EMAIL_FROM` | From для Resend (prod: `noreply@vandrounik.of.by`) |
+| `CORS_ORIGINS` | Разрешённые origin через запятую |
+| `DEV_LOGIN_CODE` | Фиксированный код без Resend (в prod не задавать) |
 | `ALLOWED_EMAILS` | Invite-only, через запятую (пусто = все) |
+| `STATIC_DIR` | Каталог Vite `dist` (Docker: `/app/dist`) |
 
 Не коммитьте `server/.env` и `server/data/`.
+
+Прод на Railway: один контейнер отдаёт API + статику + прокси Nominatim/OSRM. Инструкция: [`docs/deploy.md`](../docs/deploy.md).
 
 ## Реализовано в этой волне
 
 - `POST /auth/email/start|verify`
 - `POST /auth/refresh|logout`
 - `POST /auth/google` → 501
-- `GET|PATCH /me`
+- `GET|PATCH /me`, `POST /me/email/start|verify`
 - `GET|POST|PATCH|DELETE /trips`, `POST /trips/import`
 - `GET|PUT /visited`, `POST|DELETE /visited/:placeId`
 

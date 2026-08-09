@@ -1,0 +1,14 @@
+node_modules
+server/node_modules
+server/data
+dist
+.git
+.env
+server/.env
+*.md
+.cursor
+docs
+scripts
+coverage
+.vscode
+.DS_Store

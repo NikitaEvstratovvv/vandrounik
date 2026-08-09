@@ -1,8 +1,12 @@
 import { readFileSync, existsSync } from 'node:fs'
-import { resolve, dirname } from 'node:path'
+import { isAbsolute, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+
+function resolvePath(raw: string, base: string): string {
+  return isAbsolute(raw) ? raw : resolve(base, raw)
+}
 
 function loadDotEnv() {
   const path = resolve(root, '.env')
@@ -35,14 +39,22 @@ function required(name: string, fallback?: string): string {
 
 export const env = {
   port: Number(process.env.PORT ?? 8787),
-  databasePath: resolve(root, process.env.DATABASE_PATH ?? './data/vandrounik.sqlite'),
+  databasePath: resolvePath(process.env.DATABASE_PATH ?? './data/vandrounik.sqlite', root),
+  /** Built Vite app (`dist/`). Absolute in Docker via STATIC_DIR. */
+  staticDir: resolvePath(process.env.STATIC_DIR ?? '../dist', root),
   jwtAccessSecret: required('JWT_ACCESS_SECRET', 'dev-access-secret-change-me'),
   jwtRefreshSecret: required('JWT_REFRESH_SECRET', 'dev-refresh-secret-change-me'),
   accessTtlSeconds: Number(process.env.ACCESS_TTL_SECONDS ?? 900),
   refreshTtlSeconds: Number(process.env.REFRESH_TTL_SECONDS ?? 60 * 60 * 24 * 30),
   resendApiKey: process.env.RESEND_API_KEY?.trim() || '',
-  emailFrom: process.env.EMAIL_FROM ?? 'Vandrounik <onboarding@resend.dev>',
-  devLoginCode: process.env.DEV_LOGIN_CODE?.trim() || '0000',
+  emailFrom: process.env.EMAIL_FROM ?? 'Vandrounik <noreply@vandrounik.of.by>',
+  /** Empty in prod when Resend is on — leave unset to disable fixed code. */
+  devLoginCode: process.env.DEV_LOGIN_CODE?.trim() || '',
+  corsOrigins: (process.env.CORS_ORIGINS ??
+    'http://localhost:5173,http://127.0.0.1:5173,https://vandrounik.of.by')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean),
   allowedEmails: (process.env.ALLOWED_EMAILS ?? '')
     .split(',')
     .map((e) => e.trim().toLowerCase())
