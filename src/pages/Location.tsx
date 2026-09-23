@@ -4,7 +4,8 @@ import { Header } from '@/components/Header'
 import { EmblemLoader } from '@/components/EmblemLoader'
 import { SearchIcon, CloseCircleIcon } from '@/components/icons'
 import { searchPlaces } from '@/data/places'
-import { fetchRoadDistancesFromOrigin } from '@/lib/routing/directRouteKm'
+import { haversineKm } from '@/lib/geo/distance'
+import { roundRouteKm } from '@/lib/routing/directRouteKm'
 import { useWizard } from '@/store/wizard-context'
 import { formatDistance } from '@/lib/format'
 import type { Place } from '@/types'
@@ -27,6 +28,7 @@ export function LocationPanel({ point, onClose, focusSeq = 0 }: LocationPanelPro
   const [results, setResults] = useState<Place[]>([])
   const reqId = useRef(0)
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -34,6 +36,8 @@ export function LocationPanel({ point, onClose, focusSeq = 0 }: LocationPanelPro
     setStatus('empty')
     setResults([])
     reqId.current++
+    abortRef.current?.abort()
+    abortRef.current = null
     if (debounce.current) clearTimeout(debounce.current)
   }, [point])
 
@@ -42,9 +46,18 @@ export function LocationPanel({ point, onClose, focusSeq = 0 }: LocationPanelPro
     inputRef.current?.focus({ preventScroll: true })
   }, [focusSeq])
 
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort()
+      if (debounce.current) clearTimeout(debounce.current)
+    }
+  }, [])
+
   const handleQueryChange = (value: string) => {
     setQuery(value)
     if (debounce.current) clearTimeout(debounce.current)
+    abortRef.current?.abort()
+    abortRef.current = null
 
     const q = value.trim()
     if (!q) {
@@ -57,26 +70,27 @@ export function LocationPanel({ point, onClose, focusSeq = 0 }: LocationPanelPro
     setStatus('loading')
     const current = ++reqId.current
     debounce.current = setTimeout(async () => {
+      const controller = new AbortController()
+      abortRef.current = controller
       try {
         const near = point === 'destination' && state.origin ? state.origin : undefined
-        let found = await searchPlaces(q, { near })
+        let found = await searchPlaces(q, { near, signal: controller.signal })
         if (current !== reqId.current) return
-        if (point === 'destination' && state.origin && found.length > 0) {
-          try {
-            found = await fetchRoadDistancesFromOrigin(state.origin, found, state.transport)
-          } catch {
-            // Distances are optional — keep geocode results if OSRM is down.
-          }
-          if (current !== reqId.current) return
+        if (near && found.length > 0) {
+          found = found.map((place) => ({
+            ...place,
+            distanceKm: roundRouteKm(haversineKm(near, place)),
+          }))
         }
         setResults(found)
         setStatus(found.length > 0 ? 'results' : 'nothing')
       } catch {
+        if (controller.signal.aborted) return
         if (current !== reqId.current) return
         setResults([])
         setStatus('error')
       }
-    }, 300)
+    }, 500)
   }
 
   const handleSelect = (place: Place) => {

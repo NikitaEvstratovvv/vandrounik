@@ -28,7 +28,12 @@ export function assertAllowed(email: string) {
   }
 }
 
-function generateCode(): string {
+function isDevTestEmail(email: string): boolean {
+  return Boolean(env.devTestEmail && env.devLoginCode && email === env.devTestEmail)
+}
+
+function generateCode(email: string): string {
+  if (isDevTestEmail(email)) return env.devLoginCode
   if (!env.resendApiKey && env.devLoginCode) return env.devLoginCode
   return String(randomInt(1000, 10000))
 }
@@ -48,7 +53,7 @@ export async function issueEmailChallenge(
     }
   }
 
-  const code = generateCode()
+  const code = generateCode(email)
   const expiresAt = new Date(now + CHALLENGE_TTL_MS).toISOString()
   const lastSentAt = new Date(now).toISOString()
   getDb()
@@ -64,7 +69,7 @@ export async function issueEmailChallenge(
     .run(email, hashCode(code), expiresAt, lastSentAt)
 
   try {
-    await sendLoginCode(email, code, purpose)
+    await sendLoginCode(email, code, purpose, { skipEmail: isDevTestEmail(email) })
   } catch {
     throw new ApiError(500, 'internal', 'Не удалось отправить код')
   }

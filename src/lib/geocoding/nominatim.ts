@@ -22,12 +22,20 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function runRateLimited<T>(task: () => Promise<T>): Promise<T> {
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw new DOMException('Aborted', 'AbortError')
+  }
+}
+
+function runRateLimited<T>(task: () => Promise<T>, signal?: AbortSignal): Promise<T> {
   const run = requestQueue.then(async () => {
+    throwIfAborted(signal)
     const elapsed = Date.now() - lastRequestAt
     if (elapsed < MIN_REQUEST_INTERVAL_MS) {
       await wait(MIN_REQUEST_INTERVAL_MS - elapsed)
     }
+    throwIfAborted(signal)
     lastRequestAt = Date.now()
     return task()
   })
@@ -56,10 +64,12 @@ function mapResult(result: NominatimResult): Place {
 
 export async function searchPlaces(
   query: string,
-  options: { near?: LatLng } = {},
+  options: { near?: LatLng; signal?: AbortSignal } = {},
 ): Promise<Place[]> {
   const q = query.trim()
   if (!q) return []
+
+  throwIfAborted(options.signal)
 
   const cacheKey = q.toLowerCase()
   const cached = cache.get(cacheKey)
@@ -72,7 +82,9 @@ export async function searchPlaces(
       limit: '8',
     })
 
-    const response = await fetch(`${SEARCH_ENDPOINT}?${params.toString()}`)
+    const response = await fetch(`${SEARCH_ENDPOINT}?${params.toString()}`, {
+      signal: options.signal,
+    })
     if (!response.ok) {
       throw new Error('Не удалось найти место')
     }
@@ -84,7 +96,7 @@ export async function searchPlaces(
 
     cache.set(cacheKey, mapped)
     return mapped
-  })
+  }, options.signal)
 
   if (!options.near) return places
 

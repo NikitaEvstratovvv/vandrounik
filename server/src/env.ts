@@ -60,6 +60,11 @@ export const env = {
   emailFrom: process.env.EMAIL_FROM ?? 'Vandrounik <noreply@vandrounik.of.by>',
   /** Empty in prod when Resend is on — leave unset to disable fixed code. */
   devLoginCode: process.env.DEV_LOGIN_CODE?.trim() || '',
+  /**
+   * Fixed test inbox: always uses DEV_LOGIN_CODE and skips Resend.
+   * Empty = no special test account (fixed code only when Resend is off).
+   */
+  devTestEmail: (process.env.DEV_TEST_EMAIL ?? '').trim().toLowerCase(),
   corsOrigins: (process.env.CORS_ORIGINS ??
     'http://localhost:5173,http://127.0.0.1:5173,https://vandrounik.of.by')
     .split(',')

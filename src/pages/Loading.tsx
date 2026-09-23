@@ -10,7 +10,6 @@ import { saveGeneration } from '@/lib/storage/generation'
 import { useWizard } from '@/store/wizard-context'
 
 const LOADER_TEXTS = ['Ищем места...', 'Строим маршрут...', 'Почти готово...']
-const MIN_LOADING_MS = 2500
 
 /** L1 — Загрузка / генерация маршрута. 1:1 с Figma (node 149:838). */
 export function Loading() {
@@ -37,18 +36,12 @@ export function Loading() {
     if (!canGenerate) return
     setError(null)
 
-    const startedAt = Date.now()
     const requestId = requestIdRef.current + 1
     requestIdRef.current = requestId
 
     const run = async () => {
       try {
         const result = await generateRoutes(state)
-        const elapsed = Date.now() - startedAt
-        const remaining = Math.max(0, MIN_LOADING_MS - elapsed)
-        if (remaining > 0) {
-          await new Promise((resolve) => setTimeout(resolve, remaining))
-        }
         if (requestId !== requestIdRef.current) return
         saveGeneration(result)
         navigate('/plan/results', { replace: true })

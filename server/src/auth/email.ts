@@ -5,9 +5,10 @@ export async function sendLoginCode(
   email: string,
   code: string,
   purpose: 'login' | 'email_change' = 'login',
+  options: { skipEmail?: boolean } = {},
 ): Promise<void> {
   const label = purpose === 'email_change' ? 'email change' : 'login'
-  if (!env.resendApiKey) {
+  if (!env.resendApiKey || options.skipEmail) {
     console.log(`[auth] ${label} code for ${email}: ${code}`)
     return
   }

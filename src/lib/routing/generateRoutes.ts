@@ -2,6 +2,7 @@ import { INTERESTS } from '@/data/interests'
 import { primaryInterest } from '@/data/placeTaxonomy'
 import { ROUTE_PLACES } from '@/data/routePlaces'
 import { distanceToSegmentKm, bearingDeg, haversineKm, segmentProjection } from '@/lib/geo/distance'
+import { fetchDirectRouteKm } from '@/lib/routing/directRouteKm'
 import { planRoute, planTrip } from '@/lib/routing/osrm'
 import { hoursToKm } from '@/lib/transport/speed'
 import type {
@@ -121,13 +122,9 @@ export async function resolveRouteTarget(state: WizardState): Promise<RouteTarge
   if (!hasValidEndpoint(state.origin) || !hasValidEndpoint(state.destination)) return null
   if (isCircular(state)) return null
 
-  try {
-    const trip = await planRoute([state.origin, state.destination], { transport: state.transport })
-    return { unit: 'km', value: Math.max(1, Math.round(trip.distanceKm)) }
-  } catch {
-    const km = Math.max(1, Math.round(haversineKm(state.origin, state.destination)))
-    return { unit: 'km', value: km }
-  }
+  const km = await fetchDirectRouteKm(state.origin, state.destination, state.transport)
+  if (km === null) return null
+  return { unit: 'km', value: km }
 }
 
 export function routeTargetDiff(route: { distanceKm: number; durationMinutes: number }, target: RouteTarget): number {
@@ -150,15 +147,6 @@ export function routeTargetPenalty(
   if (value > target.value * 1.6) return target.value * 3
   if (value > target.value * 1.25) return target.value
   return 0
-}
-
-function routeMatchesTargetAcceptance(
-  route: { distanceKm: number; durationMinutes: number },
-  target: RouteTarget | null,
-): boolean {
-  if (!target) return false
-  const diff = routeTargetDiff(route, target)
-  return diff <= Math.max(target.value * TARGET_ACCEPT_RATIO, 15)
 }
 
 export function directRouteDistanceKm(state: WizardState): number | null {
@@ -948,30 +936,23 @@ async function buildCandidate(
   const targetKm = targetDistanceKm(target, state.transport)
   const longTarget = targetKm !== null && targetKm >= LONG_TARGET_KM
   const minPoiCount = target ? (spec.allowLowerCount ? spec.count : minDesiredPoiCountForState(state, target)) : 0
-  const primaryAttemptCounts = uniqueCounts(spec.count, Math.min(3, spec.count), minPoiCount).filter(
-    (count) => count >= minPoiCount,
-  )
   const fallbackAttemptCounts = uniqueCounts(Math.min(minPoiCount - 1, spec.count), 1, 0).filter(
-    (count) => count < minPoiCount,
+    (count) => count < minPoiCount && count !== spec.count,
   )
+
   let bestInputStops: RouteStop[] | null = null
   let bestTrip: Awaited<ReturnType<typeof planTrip>> | null = null
-  let bestScore = Number.POSITIVE_INFINITY
 
-  for (const count of primaryAttemptCounts) {
+  {
+    const count = spec.count
     const places = count > 0 ? selectRoutePlaces(state, count, spec.seed, target) : []
     const inputStops = buildInputStops(state, places, circular && places.length > 0)
     try {
-      const trip = await planStops(inputStops, circular && places.length > 0, count > 0, state.transport)
-      const targetScore = target ? routeTargetDiff(trip, target) : spec.scoreBias
-      const candidateScore = targetScore + routeTargetPenalty(trip, target)
-      if (candidateScore < bestScore) {
-        bestInputStops = inputStops
-        bestTrip = trip
-        bestScore = candidateScore
-      }
-      if (routeMatchesTargetAcceptance(trip, target)) break
-    } catch {}
+      bestTrip = await planStops(inputStops, circular && places.length > 0, count > 0, state.transport)
+      bestInputStops = inputStops
+    } catch {
+      // Fall through to lower counts only when this call failed.
+    }
   }
 
   if (!bestTrip) {
@@ -980,15 +961,9 @@ async function buildCandidate(
       const places = count > 0 ? selectRoutePlaces(state, count, spec.seed, target) : []
       const inputStops = buildInputStops(state, places, circular && places.length > 0)
       try {
-        const trip = await planStops(inputStops, circular && places.length > 0, count > 0, state.transport)
-        const targetScore = target ? routeTargetDiff(trip, target) : spec.scoreBias
-        const candidateScore = targetScore + routeTargetPenalty(trip, target)
-        if (candidateScore < bestScore) {
-          bestInputStops = inputStops
-          bestTrip = trip
-          bestScore = candidateScore
-        }
-        if (routeMatchesTargetAcceptance(trip, target)) break
+        bestTrip = await planStops(inputStops, circular && places.length > 0, count > 0, state.transport)
+        bestInputStops = inputStops
+        break
       } catch {}
     }
   }

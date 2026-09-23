@@ -19,6 +19,12 @@ import {
   verifyEmailLogin,
 } from '@/lib/storage/auth'
 
+/** Dev-only: совпадает с DEV_TEST_EMAIL / DEV_LOGIN_CODE на сервере. */
+const DEV_TEST_ACCOUNT = {
+  email: 'test@vandrounik.local',
+  code: '0000',
+} as const
+
 /** A0 — Email (+ error state Figma 320:1711 / 320:1734). Node 320:1635. */
 export function AuthEmailPage() {
   const navigate = useNavigate()
@@ -50,6 +56,24 @@ export function AuthEmailPage() {
     }
   }
 
+  const loginAsTest = async () => {
+    setBusy(true)
+    setSubmitError(null)
+    try {
+      await startEmailLogin(DEV_TEST_ACCOUNT.email)
+      await verifyEmailLogin(DEV_TEST_ACCOUNT.email, DEV_TEST_ACCOUNT.code)
+      navigate('/plan', { replace: true })
+    } catch (error) {
+      const message =
+        error instanceof ApiClientError
+          ? error.message
+          : 'Тестовый вход не удался. Проверь DEV_TEST_EMAIL / DEV_LOGIN_CODE на API.'
+      setSubmitError(message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <RedirectIfAuthed>
       <AuthShell>
@@ -69,6 +93,31 @@ export function AuthEmailPage() {
             {submitError ? <AuthFieldError>{submitError}</AuthFieldError> : null}
           </Flex>
           <AuthSubmit disabled={busy} />
+          {import.meta.env.DEV ? (
+            <chakra.button
+              type="button"
+              onClick={() => void loginAsTest()}
+              disabled={busy}
+              w="full"
+              h="48px"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              bg="transparent"
+              color="primary"
+              fontFamily="body"
+              fontSize="base"
+              fontWeight="medium"
+              lineHeight="base"
+              borderRadius="card"
+              cursor={busy ? 'default' : 'pointer'}
+              opacity={busy ? 0.5 : 1}
+              transition="opacity 150ms"
+              _hover={busy ? undefined : { opacity: 0.75 }}
+            >
+              Тестовый вход
+            </chakra.button>
+          ) : null}
         </AuthForm>
       </AuthShell>
     </RedirectIfAuthed>

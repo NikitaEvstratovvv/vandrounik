@@ -61,6 +61,59 @@ export type PlanRouteOptions = {
   transport?: Transport
 }
 
+const plannedTripCache = new Map<string, PlannedTrip>()
+const tableDistancesCache = new Map<string, number[]>()
+const plannedTripInflight = new Map<string, Promise<PlannedTrip>>()
+const tableDistancesInflight = new Map<string, Promise<number[]>>()
+
+function waypointsKey(waypoints: LatLng[]): string {
+  return waypoints.map((point) => `${point.lng},${point.lat}`).join(';')
+}
+
+async function getOrFetchPlannedTrip(
+  cacheKey: string,
+  fetchTrip: () => Promise<PlannedTrip>,
+): Promise<PlannedTrip> {
+  const cached = plannedTripCache.get(cacheKey)
+  if (cached) return cached
+
+  const inflight = plannedTripInflight.get(cacheKey)
+  if (inflight) return inflight
+
+  const promise = fetchTrip()
+    .then((planned) => {
+      plannedTripCache.set(cacheKey, planned)
+      return planned
+    })
+    .finally(() => {
+      plannedTripInflight.delete(cacheKey)
+    })
+  plannedTripInflight.set(cacheKey, promise)
+  return promise
+}
+
+async function getOrFetchTableDistances(
+  cacheKey: string,
+  fetchDistances: () => Promise<number[]>,
+): Promise<number[]> {
+  const cached = tableDistancesCache.get(cacheKey)
+  if (cached) return cached
+
+  const inflight = tableDistancesInflight.get(cacheKey)
+  if (inflight) return inflight
+
+  const promise = fetchDistances()
+    .then((row) => {
+      tableDistancesCache.set(cacheKey, row)
+      return row
+    })
+    .finally(() => {
+      tableDistancesInflight.delete(cacheKey)
+    })
+  tableDistancesInflight.set(cacheKey, promise)
+  return promise
+}
+
 export function osrmProfile(transport: Transport = 'car'): OsrmProfile {
   return transport === 'bike' ? 'cycling' : 'driving'
 }
@@ -162,41 +215,46 @@ export async function planTrip(waypoints: LatLng[], options: PlanTripOptions = {
   }
 
   const transport = options.transport ?? 'car'
-  const coordinates = waypoints.map((point) => `${point.lng},${point.lat}`).join(';')
-  const params = new URLSearchParams({
-    geometries: 'polyline6',
-    overview: 'full',
-    steps: 'false',
-    source: 'first',
+  const roundtrip = Boolean(options.roundtrip)
+  const cacheKey = `trip|${osrmProfile(transport)}|${roundtrip ? 'rt' : 'oneway'}|${waypointsKey(waypoints)}`
+
+  return getOrFetchPlannedTrip(cacheKey, async () => {
+    const coordinates = waypointsKey(waypoints)
+    const params = new URLSearchParams({
+      geometries: 'polyline6',
+      overview: 'full',
+      steps: 'false',
+      source: 'first',
+    })
+
+    if (roundtrip) {
+      params.set('roundtrip', 'true')
+    } else {
+      params.set('roundtrip', 'false')
+      params.set('destination', 'last')
+    }
+
+    const response = await fetchWithTimeout(`${tripEndpoint(transport)}/${coordinates}?${params.toString()}`)
+    if (!response.ok) {
+      throw new Error('OSRM недоступен')
+    }
+
+    const data = (await response.json()) as OsrmTripResponse
+    const trip = data.trips?.[0]
+    if (data.code !== 'Ok' || !trip || !data.waypoints) {
+      throw new Error(data.message || 'Не удалось построить маршрут')
+    }
+
+    const waypointOrder = data.waypoints
+      .map((waypoint, inputIndex) => ({
+        inputIndex,
+        order: waypoint.waypoint_index ?? inputIndex,
+      }))
+      .sort((a, b) => a.order - b.order)
+      .map((waypoint) => waypoint.inputIndex)
+
+    return plannedTripFromOsrmRoute(trip, waypointOrder, transport)
   })
-
-  if (options.roundtrip) {
-    params.set('roundtrip', 'true')
-  } else {
-    params.set('roundtrip', 'false')
-    params.set('destination', 'last')
-  }
-
-  const response = await fetchWithTimeout(`${tripEndpoint(transport)}/${coordinates}?${params.toString()}`)
-  if (!response.ok) {
-    throw new Error('OSRM недоступен')
-  }
-
-  const data = (await response.json()) as OsrmTripResponse
-  const trip = data.trips?.[0]
-  if (data.code !== 'Ok' || !trip || !data.waypoints) {
-    throw new Error(data.message || 'Не удалось построить маршрут')
-  }
-
-  const waypointOrder = data.waypoints
-    .map((waypoint, inputIndex) => ({
-      inputIndex,
-      order: waypoint.waypoint_index ?? inputIndex,
-    }))
-    .sort((a, b) => a.order - b.order)
-    .map((waypoint) => waypoint.inputIndex)
-
-  return plannedTripFromOsrmRoute(trip, waypointOrder, transport)
 }
 
 /** Дорожные расстояния (м) от первой точки до каждой из остальных. */
@@ -206,26 +264,30 @@ export async function fetchTableDistancesMeters(
 ): Promise<number[]> {
   if (waypoints.length < 2) return []
 
-  const coordinates = waypoints.map((point) => `${point.lng},${point.lat}`).join(';')
-  const destinations = waypoints.map((_, index) => index).slice(1).join(';')
-  const params = new URLSearchParams({
-    sources: '0',
-    destinations,
-    annotations: 'distance',
+  const cacheKey = `table|${osrmProfile(transport)}|${waypointsKey(waypoints)}`
+
+  return getOrFetchTableDistances(cacheKey, async () => {
+    const coordinates = waypointsKey(waypoints)
+    const destinations = waypoints.map((_, index) => index).slice(1).join(';')
+    const params = new URLSearchParams({
+      sources: '0',
+      destinations,
+      annotations: 'distance',
+    })
+
+    const response = await fetchWithTimeout(`${tableEndpoint(transport)}/${coordinates}?${params.toString()}`)
+    if (!response.ok) {
+      throw new Error('OSRM недоступен')
+    }
+
+    const data = (await response.json()) as OsrmTableResponse
+    const row = data.distances?.[0]
+    if (data.code !== 'Ok' || !row || row.length !== waypoints.length - 1) {
+      throw new Error(data.message || 'Не удалось рассчитать расстояния')
+    }
+
+    return row
   })
-
-  const response = await fetchWithTimeout(`${tableEndpoint(transport)}/${coordinates}?${params.toString()}`)
-  if (!response.ok) {
-    throw new Error('OSRM недоступен')
-  }
-
-  const data = (await response.json()) as OsrmTableResponse
-  const row = data.distances?.[0]
-  if (data.code !== 'Ok' || !row || row.length !== waypoints.length - 1) {
-    throw new Error(data.message || 'Не удалось рассчитать расстояния')
-  }
-
-  return row
 }
 
 export async function planRoute(waypoints: LatLng[], options: PlanRouteOptions = {}): Promise<PlannedTrip> {
@@ -234,23 +296,34 @@ export async function planRoute(waypoints: LatLng[], options: PlanRouteOptions =
   }
 
   const transport = options.transport ?? 'car'
-  const coordinates = waypoints.map((point) => `${point.lng},${point.lat}`).join(';')
-  const params = new URLSearchParams({
-    geometries: 'polyline6',
-    overview: 'full',
-    steps: 'false',
+  const cacheKey = `route|${osrmProfile(transport)}|${waypointsKey(waypoints)}`
+
+  return getOrFetchPlannedTrip(cacheKey, async () => {
+    const coordinates = waypointsKey(waypoints)
+    const params = new URLSearchParams({
+      geometries: 'polyline6',
+      overview: 'full',
+      steps: 'false',
+    })
+
+    const response = await fetchWithTimeout(`${routeEndpoint(transport)}/${coordinates}?${params.toString()}`)
+    if (!response.ok) {
+      throw new Error('OSRM недоступен')
+    }
+
+    const data = (await response.json()) as OsrmRouteResponse
+    const route = data.routes?.[0]
+    if (data.code !== 'Ok' || !route) {
+      throw new Error(data.message || 'Не удалось построить маршрут')
+    }
+
+    return plannedTripFromOsrmRoute(route, waypoints.map((_, index) => index), transport)
   })
+}
 
-  const response = await fetchWithTimeout(`${routeEndpoint(transport)}/${coordinates}?${params.toString()}`)
-  if (!response.ok) {
-    throw new Error('OSRM недоступен')
-  }
-
-  const data = (await response.json()) as OsrmRouteResponse
-  const route = data.routes?.[0]
-  if (data.code !== 'Ok' || !route) {
-    throw new Error(data.message || 'Не удалось построить маршрут')
-  }
-
-  return plannedTripFromOsrmRoute(route, waypoints.map((_, index) => index), transport)
+export function clearOsrmCache(): void {
+  plannedTripCache.clear()
+  tableDistancesCache.clear()
+  plannedTripInflight.clear()
+  tableDistancesInflight.clear()
 }

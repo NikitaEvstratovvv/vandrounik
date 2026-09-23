@@ -21,8 +21,19 @@ Avatars: `GET /media/avatars/:file` (файлы в `AVATARS_DIR`)
 
 Без `RESEND_API_KEY` код пишется в консоль сервера. По умолчанию `DEV_LOGIN_CODE=0000`.
 
-1. `POST /api/v1/auth/email/start` `{ "email": "you@example.com" }`
-2. `POST /api/v1/auth/email/verify` `{ "email": "you@example.com", "code": "0000" }`
+**Тестовая учётка** (работает даже с Resend):
+
+| | |
+|---|---|
+| Email | `test@vandrounik.local` |
+| Код | `0000` |
+
+На экране входа в Vite (`npm run dev`) есть кнопка «Тестовый вход». Или вручную:
+
+1. `POST /api/v1/auth/email/start` `{ "email": "test@vandrounik.local" }`
+2. `POST /api/v1/auth/email/verify` `{ "email": "test@vandrounik.local", "code": "0000" }`
+
+В production не задавайте `DEV_TEST_EMAIL` / `DEV_LOGIN_CODE`.
 
 ## Env
 
@@ -37,7 +48,8 @@ Avatars: `GET /media/avatars/:file` (файлы в `AVATARS_DIR`)
 | `RESEND_API_KEY` | Если задан — письма через Resend |
 | `EMAIL_FROM` | From для Resend (prod: `noreply@vandrounik.of.by`) |
 | `CORS_ORIGINS` | Разрешённые origin через запятую |
-| `DEV_LOGIN_CODE` | Фиксированный код без Resend (в prod не задавать) |
+| `DEV_LOGIN_CODE` | Фиксированный код без Resend; для `DEV_TEST_EMAIL` — всегда (в prod не задавать) |
+| `DEV_TEST_EMAIL` | Тестовая почта с фиксированным кодом (в prod не задавать) |
 | `ALLOWED_EMAILS` | Invite-only, через запятую (пусто = все) |
 | `STATIC_DIR` | Каталог Vite `dist` (Docker: `/app/dist`) |
 

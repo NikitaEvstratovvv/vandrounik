@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { bearingDeg, haversineKm, segmentProjection } from '@/lib/geo/distance'
+import { clearDirectRouteKmCache } from '@/lib/routing/directRouteKm'
 import { planRoute, planTrip } from '@/lib/routing/osrm'
 import {
   appendCircularFinish,
@@ -414,6 +415,7 @@ describe('selectRoutePlaces', () => {
 
 describe('resolveRouteTarget', () => {
   beforeEach(() => {
+    clearDirectRouteKmCache()
     vi.mocked(planRoute).mockReset()
   })
 

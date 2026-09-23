@@ -36,7 +36,7 @@ export function Profile() {
 
   useEffect(() => {
     void refreshVisited().then((ids) => setPlacesSeen(ids.size))
-  }, [location.pathname])
+  }, [])
 
   const isSettingsStack = isSettingsStackPath(location.pathname)
   const isPhoto = location.pathname === '/profile/settings/photo'

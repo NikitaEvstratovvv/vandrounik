@@ -86,6 +86,7 @@ export const InteractiveRouteMap = forwardRef<InteractiveRouteMapRef, Interactiv
     const pinchRef = useRef<PinchState | null>(null)
     const fittedStopsKeyRef = useRef<string | null>(null)
     const animFrameRef = useRef<number | null>(null)
+    const animatingZoomRef = useRef(false)
     const zoomRef = useRef(8)
     const centerRef = useRef(boundsCenter(stops))
     const sizeRef = useRef({ width: 360, height: 600 })
@@ -93,25 +94,43 @@ export const InteractiveRouteMap = forwardRef<InteractiveRouteMapRef, Interactiv
     const [size, setSize] = useState({ width: 360, height: 600 })
     const [center, setCenter] = useState(() => boundsCenter(stops))
     const [zoom, setZoom] = useState(8)
+    const [tileZoomBase, setTileZoomBase] = useState(8)
+    const [tilesReady, setTilesReady] = useState(false)
 
     const stopsKey = useMemo(() => stops.map((s) => s.placeId).join('|'), [stops])
-    const tileZoom = Math.floor(clampZoom(zoom))
+    const tileZoom = tilesReady ? tileZoomBase : Math.floor(clampZoom(zoom))
     const zoomScale = 2 ** (zoom - tileZoom)
 
-    const setZoomCenter = useCallback((nextZoom: number, nextCenter: { lat: number; lng: number }) => {
-      const z = clampZoom(nextZoom)
-      zoomRef.current = z
-      centerRef.current = nextCenter
-      setZoom(z)
-      setCenter(nextCenter)
+    const commitTileZoom = useCallback((nextZoom: number) => {
+      setTileZoomBase(Math.floor(clampZoom(nextZoom)))
+      setTilesReady(true)
     }, [])
+
+    const setZoomCenter = useCallback(
+      (nextZoom: number, nextCenter: { lat: number; lng: number }, commitTiles = true) => {
+        const z = clampZoom(nextZoom)
+        zoomRef.current = z
+        centerRef.current = nextCenter
+        setZoom(z)
+        setCenter(nextCenter)
+        if (commitTiles && !animatingZoomRef.current) {
+          setTileZoomBase(Math.floor(z))
+          setTilesReady(true)
+        }
+      },
+      [],
+    )
 
     const cancelZoomAnimation = useCallback(() => {
       if (animFrameRef.current !== null) {
         cancelAnimationFrame(animFrameRef.current)
         animFrameRef.current = null
       }
-    }, [])
+      if (animatingZoomRef.current) {
+        animatingZoomRef.current = false
+        commitTileZoom(zoomRef.current)
+      }
+    }, [commitTileZoom])
 
     useEffect(() => {
       zoomRef.current = zoom
@@ -166,29 +185,33 @@ export const InteractiveRouteMap = forwardRef<InteractiveRouteMapRef, Interactiv
       }
 
       const startedAt = performance.now()
+      animatingZoomRef.current = true
 
       const tick = (now: number) => {
         const progress = easeOutCubic(Math.min(1, (now - startedAt) / ZOOM_ANIM_MS))
         const z = startZoom + (targetZoom - startZoom) * progress
         const lat = startCenter.lat + (targetCenter.lat - startCenter.lat) * progress
         const lng = startCenter.lng + (targetCenter.lng - startCenter.lng) * progress
-        setZoomCenter(z, { lat, lng })
+        setZoomCenter(z, { lat, lng }, false)
 
         if (progress < 1) {
           animFrameRef.current = requestAnimationFrame(tick)
         } else {
           animFrameRef.current = null
+          animatingZoomRef.current = false
+          commitTileZoom(targetZoom)
         }
       }
 
       animFrameRef.current = requestAnimationFrame(tick)
-    }, [cancelZoomAnimation, setZoomCenter, stops])
+    }, [cancelZoomAnimation, commitTileZoom, setZoomCenter, stops])
 
     useEffect(() => {
       if (fittedStopsKeyRef.current === stopsKey) return
       const isInitial = fittedStopsKeyRef.current === null
       fittedStopsKeyRef.current = stopsKey
       cancelZoomAnimation()
+      animatingZoomRef.current = false
       if (isInitial) {
         fitToStops()
       } else {
@@ -215,23 +238,26 @@ export const InteractiveRouteMap = forwardRef<InteractiveRouteMapRef, Interactiv
         if (Math.abs(target - startZoom) < 0.0001) return
 
         const startedAt = performance.now()
+        animatingZoomRef.current = true
 
         const tick = (now: number) => {
           const progress = easeOutCubic(Math.min(1, (now - startedAt) / ZOOM_ANIM_MS))
           const z = startZoom + (target - startZoom) * progress
           const nextCenter = zoomAtPoint(startZoom, z, startCenter, focal, sizeRef.current)
-          setZoomCenter(z, nextCenter)
+          setZoomCenter(z, nextCenter, false)
 
           if (progress < 1) {
             animFrameRef.current = requestAnimationFrame(tick)
           } else {
             animFrameRef.current = null
+            animatingZoomRef.current = false
+            commitTileZoom(target)
           }
         }
 
         animFrameRef.current = requestAnimationFrame(tick)
       },
-      [cancelZoomAnimation, setZoomCenter],
+      [cancelZoomAnimation, commitTileZoom, setZoomCenter],
     )
 
     const zoomIn = useCallback(() => {
@@ -251,8 +277,8 @@ export const InteractiveRouteMap = forwardRef<InteractiveRouteMapRef, Interactiv
     useImperativeHandle(ref, () => ({ zoomIn, zoomOut }), [zoomIn, zoomOut])
 
     const tiles = useMemo(
-      () => tileRange(center, tileZoom, size.width, size.height),
-      [center, tileZoom, size.width, size.height],
+      () => (tilesReady ? tileRange(center, tileZoom, size.width, size.height) : []),
+      [tilesReady, center, tileZoom, size.width, size.height],
     )
 
     const routePoints = useMemo(() => {

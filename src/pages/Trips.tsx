@@ -29,7 +29,7 @@ export function Trips() {
 
   useEffect(() => {
     void refreshTrips().then(setTrips)
-  }, [location.pathname, location.key])
+  }, [])
 
   useEffect(() => {
     if (!isDetail || !detailId) return
@@ -61,7 +61,7 @@ export function Trips() {
 
   const handleDetailExited = () => {
     setActiveTrip(null)
-    void refreshTrips().then(setTrips)
+    setTrips(loadTrips())
     if (isDetail) {
       navigate('/trips', { replace: true })
     }
@@ -74,7 +74,7 @@ export function Trips() {
 
   const handleTripDeleted = () => {
     setDetailOpen(false)
-    void refreshTrips().then(setTrips)
+    setTrips(loadTrips())
   }
 
   const detailPresent = isDetail || detailOpen
