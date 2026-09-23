@@ -71,6 +71,15 @@ Profile section overview: [`304:2279`](https://www.figma.com/design/mAysLALLcMDA
 | Racing flag icon | `264:930` | `icons.tsx` (`RacingFlagIcon`, map) |
 | Flag icon (start/finish) | shadcn `1529:32769` | `icons.tsx` (`FlagIcon`, stop badges) |
 
+## Status values
+
+| Status | Meaning |
+|--------|---------|
+| `implemented` | In the app; Figma node listed when it exists |
+| `composed` | In the app (or specced) from recipes / nearest screen — **no** Figma node yet. Do not invent an id |
+| `figma-only` | In Figma, not in the app |
+| `retired` | Removed from the app |
+
 ## Figma-only (v2+, not in app yet)
 
 Figma contains more screens than v1 (catalog, place card, full trips history, …). Treat as `figma-only` until implemented. When adding one:
@@ -78,3 +87,5 @@ Figma contains more screens than v1 (catalog, place card, full trips history, �
 1. Pick the frame node in Figma.
 2. Add a row here with status `figma-only` → then `implemented`.
 3. Add `docs/ui/screens/…` and follow `vandrounik-ui` skill.
+
+When composing without a Figma frame (skill `vandrounik-compose`): add a row with status `composed`, leave Node(s) empty, and follow [recipes.md](recipes.md).

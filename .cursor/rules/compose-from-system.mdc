@@ -1,0 +1,17 @@
+---
+description: Extend existing flows from shipped primitives; do not open Figma for incremental UI.
+globs: src/components/**/*.{ts,tsx},src/pages/**/*.{ts,tsx},docs/ui/**/*.md
+alwaysApply: false
+---
+
+# Compose from system
+
+If the change extends an existing flow or state and there is no Figma URL:
+
+1. Do not call Figma MCP.
+2. Copy structure from the nearest screen in `docs/ui/screens/` and that page's code.
+3. Follow `docs/ui/recipes.md`. Reuse primitives from `docs/ui/components/index.md`.
+4. Tokens only (`docs/ui/design-tokens.md`). New value → `system.ts` + tokens doc.
+5. Mark new UI `composed` in `docs/ui/figma-nodes.md`.
+
+If the user pastes a Figma node, or the surface has no sibling (e.g. Catalog E7), follow skill `vandrounik-ui`.

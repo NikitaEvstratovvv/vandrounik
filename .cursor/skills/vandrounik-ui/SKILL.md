@@ -2,8 +2,9 @@
 name: vandrounik-ui
 description: >-
   Pixel-perfect Vandrounik UI from Figma using Chakra tokens and existing
-  primitives. Use when implementing or restyling screens, components, sheets,
-  map chrome, or when the user mentions Figma, design tokens, or layout.
+  primitives. Use when the user pastes a Figma URL/node, or when building a
+  new product surface with no sibling screen in the app. For finishing an
+  existing flow without a Figma frame, use skill vandrounik-compose instead.
 ---
 
 # Vandrounik UI (Figma → code)
@@ -13,12 +14,15 @@ description: >-
 | Case | Source of truth |
 |------|-----------------|
 | Already implemented (v1) | Code + [docs/ui/](../../../docs/ui/) |
-| New or redesigned screen | Figma first, then map to tokens/primitives |
+| Доработка существующего флоу / состояния | Skill `vandrounik-compose` — код + примитивы + ближайший экран. **Не** вызывать Figma MCP |
+| New product surface (no sibling, e.g. E7) or user pasted a Figma node | Figma first, then map to tokens/primitives |
 
 Figma: [Vandrounik-design](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=64-208)  
 File key: `mAysLALLcMDA07FqvFno5B`
 
 ## Workflow
+
+If this is an existing-flow extension without a Figma URL, stop and follow skill `vandrounik-compose`.
 
 1. Find node in [docs/ui/figma-nodes.md](../../../docs/ui/figma-nodes.md) (or user URL → convert `node-id=137-204` → `137:204`).
 2. Load Figma design-to-code skill, then call `get_design_context` / `get_screenshot` for that `fileKey` + `nodeId`.

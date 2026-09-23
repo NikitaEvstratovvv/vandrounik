@@ -13,14 +13,16 @@ Implementation spec for the PWA UI. Lives next to the code so agents and PRs sta
 ## Canon rules
 
 1. **Implemented screens (v1)** — source of truth is the code + this folder (`docs/ui/`).
-2. **New or redesigned screens** — start from Figma (`get_design_context` / screenshot), then map to Chakra tokens and existing primitives.
-3. Do not invent a second token set; extend [`src/theme/system.ts`](../../src/theme/system.ts) when Figma introduces new variables.
+2. **Extend an existing flow** (missing state, extra field, same-pattern overlay) — compose from the nearest screen + [recipes.md](recipes.md). Do not open Figma. Skill: `vandrounik-compose`. Status in [figma-nodes.md](figma-nodes.md): `composed` until a node exists.
+3. **New product surface** with no sibling (e.g. catalog E7), or the user pasted a Figma URL — start from Figma (`get_design_context` / screenshot), then map to Chakra tokens and existing primitives. Skill: `vandrounik-ui`.
+4. Do not invent a second token set; extend [`src/theme/system.ts`](../../src/theme/system.ts) when a new value is needed.
 
 ## Index
 
 | Doc | Purpose |
 |-----|---------|
 | [design-tokens.md](design-tokens.md) | Colors, type, radii, shadows |
+| [recipes.md](recipes.md) | Layout patterns to copy when composing without Figma |
 | [navigation.md](navigation.md) | Routes, overlays, deep links |
 | [figma-nodes.md](figma-nodes.md) | Screen / component → Figma node ID |
 | [assets.md](assets.md) | Files under `public/figma/` |
@@ -31,4 +33,4 @@ Implementation spec for the PWA UI. Lives next to the code so agents and PRs sta
 
 - App flow overview: [README.md](../../README.md)
 - POI / routing data: [docs/DATA-POI.md](../DATA-POI.md)
-- Agent skills: `.cursor/skills/vandrounik-ui`, `.cursor/skills/vandrounik-architecture`
+- Agent skills: `.cursor/skills/vandrounik-compose`, `.cursor/skills/vandrounik-ui`, `.cursor/skills/vandrounik-architecture`

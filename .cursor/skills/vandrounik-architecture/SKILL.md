@@ -11,7 +11,7 @@ description: >-
 ## Before coding
 
 1. Read [docs/ui/navigation.md](../../../docs/ui/navigation.md).
-2. For UI chrome / layout, also follow skill `vandrounik-ui` and [docs/ui/](../../../docs/ui/).
+2. For UI chrome / layout: existing-flow extensions → skill `vandrounik-compose` + [docs/ui/recipes.md](../../../docs/ui/recipes.md); Figma node or no sibling screen → skill `vandrounik-ui`. Also [docs/ui/](../../../docs/ui/).
 3. For POI / OSRM / interests data, see [docs/DATA-POI.md](../../../docs/DATA-POI.md) — do not duplicate that logic here.
 
 ## Flow (v1)
@@ -83,7 +83,7 @@ CTA «Подобрать маршрут» needs origin + destination (coords) + 
 2. Add path in [`src/routes.tsx`](../../../src/routes.tsx) if deep-link needed.
 3. Root tabs go under `TabShell`; plan overlays stay in `Plan.tsx`, profile settings overlays in `Profile.tsx`.
 4. Reuse `Screen`, `Header`, `TabBar`, `SlideOverlay`, `BottomSheet`, `PrimaryButton`.
-5. Document: `docs/ui/screens/…`, row in `docs/ui/figma-nodes.md`, Figma node if known.
+5. Document: `docs/ui/screens/…`, row in `docs/ui/figma-nodes.md` (`composed` if no Figma node; node id if known).
 6. Update README flow table if it is a user-facing step.
 
 ## Do not

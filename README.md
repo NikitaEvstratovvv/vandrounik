@@ -2,10 +2,11 @@
 
 PWA для планирования автопутешествий по Беларуси: генерация маршрутов и трекер «был здесь».
 
-- **UI spec (implementation):** [docs/ui/](docs/ui/) — канон для реализованных экранов
+- **UI spec (implementation):** [docs/ui/](docs/ui/) — канон для реализованных экранов; доработки флоу без макета — [recipes.md](docs/ui/recipes.md)
 - **API contract (v1):** [docs/api.md](docs/api.md) — auth, trips, visited (бэк ещё не реализован)
 - **POI / routing data:** [docs/DATA-POI.md](docs/DATA-POI.md)
-- **Figma (новые / redesign):** [Vandrounik-design](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=64-208)
+- **Backlog:** [docs/BACKLOG.md](docs/BACKLOG.md) — доработки и идеи
+- **Figma (новые поверхности / redesign):** [Vandrounik-design](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=64-208)
 
 ## Стек
 
@@ -112,7 +113,4 @@ A0 Auth email (/)
 
 ## Не реализовано (v2+)
 
-- Google OAuth; удаление аккаунта / CDN аватаров
-- Каталог (E7)
-- Push, шаринг маршрута
-- Кастомный домен / верификация Resend (база деплоя: [docs/deploy.md](docs/deploy.md))
+См. [docs/BACKLOG.md](docs/BACKLOG.md).

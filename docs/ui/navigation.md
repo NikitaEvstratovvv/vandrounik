@@ -106,4 +106,4 @@ CTA «Подобрать маршрут» enabled when `canGenerate`: origin + d
 1. Add a child path under `/plan` in `routes.tsx` (if deep-link needed).
 2. Render panel inside `Plan` via `SlideOverlay` (or `BottomSheet`).
 3. Sync open/close with pathname like existing handlers.
-4. Document the screen under `docs/ui/screens/` and add a row to `figma-nodes.md`.
+4. Document the screen under `docs/ui/screens/` and add a row to `figma-nodes.md` (`composed` if there is no Figma node).

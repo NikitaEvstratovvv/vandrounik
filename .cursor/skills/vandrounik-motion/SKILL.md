@@ -80,5 +80,5 @@ Minimum bar: **do not ship a static screen** if it stacks, sheets, or has primar
 
 ## Coupling
 
-- Layout/tokens: skill `vandrounik-ui`
+- Layout/tokens: skill `vandrounik-compose` (extend a flow) or `vandrounik-ui` (Figma / new surface)
 - Routes/overlays URL sync: skill `vandrounik-architecture` + [docs/ui/navigation.md](../../../docs/ui/navigation.md)
