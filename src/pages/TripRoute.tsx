@@ -450,7 +450,7 @@ export function TripRoutePanel({ trip, onClose, onTripChange, onDeleted }: TripR
         open={cancelOpen}
         title="Отменить поездку?"
         body={
-          'Поездку будет отменена, но\u00a0не\u00a0удалена, ее вы сможете найти в\u00a0“Моих маршрутах”'
+          'Поездку будет отменена, но\u00a0не\u00a0удалена, ты сможешь найти ее в\u00a0“Моих маршрутах”'
         }
         confirmLabel="Отменить поездку"
         onClose={() => setCancelOpen(false)}

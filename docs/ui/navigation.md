@@ -8,7 +8,7 @@ Tab shell: [`src/components/TabShell.tsx`](../../src/components/TabShell.tsx).
 
 ```
 A0 Auth email (/)
-  → A1 Auth code (/auth/code)
+  → A1 Auth code (/auth/code)  ← «Изменить почту» back to A0 (pending prefilled)
       → TabShell (RequireAuth)
           ├── E1 Создать (/plan)          + TabBar
           ├── E5 Trips (/trips)           + TabBar
@@ -44,8 +44,8 @@ Google (mock) с любого auth-экрана → /plan
 
 | Path | Element | Notes |
 |------|---------|-------|
-| `/` | `AuthEmailPage` | Entry; email error under field (Figma 320:1734) |
-| `/auth/code` | `AuthCodePage` | Needs pending email; then session → `/plan` |
+| `/` | `AuthEmailPage` | Entry; email error under field (Figma 320:1734); prefill from pending |
+| `/auth/code` | `AuthCodePage` | Needs pending email; «Изменить почту» → `/`; then session → `/plan` |
 | `/plan` | `Plan` inside `TabShell` + `RequireAuth` | Hub + TabBar |
 | `/plan/interests` | child of Plan | Opens interests overlay; no TabBar |
 | `/plan/location` | child of Plan | Query `?point=origin\|destination` |

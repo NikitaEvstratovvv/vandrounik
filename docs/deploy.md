@@ -1,6 +1,6 @@
 # Деплой на Railway
 
-Один сервис: API + собранный фронт + прокси Nominatim/OSRM. SQLite на volume `/data`.
+Один сервис: API + собранный фронт + прокси Nominatim/OSRM. SQLite и аватары на volume `/data`.
 
 ## Подготовка репозитория
 
@@ -19,7 +19,7 @@
 2. Mount path: **`/data`**
 3. Redeploy после создания volume.
 
-Без volume база пропадёт при каждом редеплое.
+Без volume база и загруженные аватары пропадут при каждом редеплое.
 
 ## Variables
 
@@ -28,6 +28,7 @@
 | Variable | Пример |
 |----------|--------|
 | `DATABASE_PATH` | `/data/vandrounik.sqlite` |
+| `AVATARS_DIR` | `/data/avatars` (можно не задавать: по умолчанию рядом с SQLite) |
 | `STATIC_DIR` | `/app/dist` (уже в Docker; можно не дублировать) |
 | `JWT_ACCESS_SECRET` | длинная случайная строка |
 | `JWT_REFRESH_SECRET` | другая длинная случайная строка |

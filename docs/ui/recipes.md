@@ -84,4 +84,4 @@ Fonts: `body` Inter, `heading` Oswald. Colors: `primary` / `primaryFg` / `muted`
 
 ## Copy
 
-Short, on «ты», product not marketing. Mirror the neighbor screen. Examples already in app: «Ничего не найдено», «Пока еще нет созданных маршрутов», «Укажите место, откуда хотите начать поездку».
+Short, on «ты», product not marketing. Mirror the neighbor screen. Examples already in app: «Ничего не найдено», «Пока еще нет созданных маршрутов», «Укажи место, откуда хочешь начать поездку».

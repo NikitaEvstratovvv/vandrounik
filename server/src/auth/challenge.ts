@@ -12,7 +12,7 @@ const MAX_ATTEMPTS = 8
 
 export function normalizeEmail(email: unknown): string {
   if (typeof email !== 'string') {
-    throw new ApiError(400, 'validation_error', 'Укажите email')
+    throw new ApiError(400, 'validation_error', 'Укажи email')
   }
   const normalized = email.trim().toLowerCase()
   if (!EMAIL_RE.test(normalized)) {
@@ -44,7 +44,7 @@ export async function issueEmailChallenge(
   if (existing) {
     const last = new Date(existing.last_sent_at).getTime()
     if (now - last < RESEND_COOLDOWN_MS) {
-      throw new ApiError(429, 'rate_limited', 'Подождите немного перед повторной отправкой')
+      throw new ApiError(429, 'rate_limited', 'Подожди немного перед повторной отправкой')
     }
   }
 
@@ -72,7 +72,7 @@ export async function issueEmailChallenge(
 
 export function verifyEmailChallenge(email: string, codeRaw: unknown): void {
   if (typeof codeRaw !== 'string' || codeRaw.trim().length < 4) {
-    throw new ApiError(400, 'validation_error', 'Введите код из письма (не меньше 4 символов)')
+    throw new ApiError(400, 'validation_error', 'Введи код из письма (не меньше 4 символов)')
   }
 
   const challenge = getDb()
@@ -82,13 +82,13 @@ export function verifyEmailChallenge(email: string, codeRaw: unknown): void {
     | undefined
 
   if (!challenge) {
-    throw new ApiError(401, 'unauthorized', 'Сначала запросите код')
+    throw new ApiError(401, 'unauthorized', 'Сначала запроси код')
   }
   if (challenge.attempts >= MAX_ATTEMPTS) {
-    throw new ApiError(429, 'rate_limited', 'Слишком много попыток. Запросите новый код')
+    throw new ApiError(429, 'rate_limited', 'Слишком много попыток. Запроси новый код')
   }
   if (new Date(challenge.expires_at).getTime() < Date.now()) {
-    throw new ApiError(401, 'unauthorized', 'Код истёк. Запросите новый')
+    throw new ApiError(401, 'unauthorized', 'Код истёк. Запроси новый')
   }
 
   const ok = safeEqualHash(challenge.code_hash, hashCode(codeRaw))

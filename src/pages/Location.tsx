@@ -87,8 +87,8 @@ export function LocationPanel({ point, onClose, focusSeq = 0 }: LocationPanelPro
 
   const emptyText =
     point === 'destination'
-      ? 'Укажите место, куда хотите приехать'
-      : 'Укажите место, откуда хотите начать поездку'
+      ? 'Укажи место, куда хочешь приехать'
+      : 'Укажи место, откуда хочешь начать поездку'
 
   return (
     <>
@@ -150,7 +150,7 @@ export function LocationPanel({ point, onClose, focusSeq = 0 }: LocationPanelPro
             {status === 'empty' && <EmptyState text={emptyText} variant="empty" />}
             {status === 'nothing' && <EmptyState text="Ничего не найдено" variant="nothing" />}
             {status === 'loading' && <EmblemLoader size={64} />}
-            {status === 'error' && <EmptyState text="Не удалось выполнить поиск. Проверьте интернет и попробуйте ещё раз" variant="nothing" />}
+            {status === 'error' && <EmptyState text="Не удалось выполнить поиск. Проверь интернет и попробуй ещё раз" variant="nothing" />}
           </Flex>
         )}
         {status === 'results' && (

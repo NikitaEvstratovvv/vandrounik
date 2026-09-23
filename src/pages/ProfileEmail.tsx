@@ -28,7 +28,7 @@ export function ProfileEmailPanel({ step, onClose, onBackToEmail }: ProfileEmail
     return (
       <ProfileSuccess
         title="Почта сохранена"
-        subtitle="Указывайте ее при входе в приложение"
+        subtitle="Указывай ее при входе в приложение"
         onBack={onClose}
       />
     )
@@ -45,7 +45,8 @@ export function ProfileEmailPanel({ step, onClose, onBackToEmail }: ProfileEmail
 function ProfileEmailForm({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate()
   const session = loadSession()
-  const [email, setEmail] = useState(session?.email ?? '')
+  const pendingChange = loadEmailChangePending()
+  const [email, setEmail] = useState(pendingChange?.email ?? session?.email ?? '')
   const [showError, setShowError] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -77,7 +78,7 @@ function ProfileEmailForm({ onClose }: { onClose: () => void }) {
       const message =
         error instanceof ApiClientError
           ? error.message
-          : 'Не удалось отправить код. Запустите API и попробуйте снова.'
+          : 'Не удалось отправить код. Запусти API и попробуй снова.'
       setSubmitError(message)
     } finally {
       setBusy(false)
@@ -89,7 +90,7 @@ function ProfileEmailForm({ onClose }: { onClose: () => void }) {
       <Header variant="back" title="Почта" onBack={onClose} />
       <Flex flex="1" direction="column" gap="16px" pt="16px" px="16px">
         <Text fontSize="sm" lineHeight="sm" color="primary">
-          Укажите новую почту, которую хотите привязать
+          Укажи новую почту, которую хочешь привязать
         </Text>
         <Flex direction="column" gap="8px" w="full">
           <AuthField
@@ -137,7 +138,7 @@ function ProfileEmailCodeForm({ onBack }: { onBack: () => void }) {
       navigate('/profile/settings/email/done', { replace: true })
     } catch (error) {
       const message =
-        error instanceof ApiClientError ? error.message : 'Не удалось сохранить почту. Проверьте код.'
+        error instanceof ApiClientError ? error.message : 'Не удалось сохранить почту. Проверь код.'
       setSubmitError(message)
     } finally {
       setBusy(false)
@@ -148,8 +149,8 @@ function ProfileEmailCodeForm({ onBack }: { onBack: () => void }) {
     <Flex direction="column" flex="1" minH="0" h="full" bg="screen">
       <Header variant="back" title="Почта" onBack={onBack} />
       <Flex flex="1" direction="column" gap="16px" pt="16px" px="16px">
-        <Text fontSize="sm" lineHeight="sm" color="primary">
-          Подтвердите смену почты кодом из письма
+        <Text fontSize="sm" lineHeight="sm" color="primary" overflowWrap="anywhere">
+          Отправили код на {pending.email}
         </Text>
         <Flex direction="column" gap="8px" w="full">
           <AuthField

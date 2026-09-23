@@ -12,9 +12,10 @@ npm run dev
 ```
 
 API: `http://localhost:8787/api/v1`  
-Health: `GET /api/v1/health`
+Health: `GET /api/v1/health`  
+Avatars: `GET /media/avatars/:file` (файлы в `AVATARS_DIR`)
 
-В корневом Vite (`npm run dev`) путь `/api/v1` проксируется на этот порт.
+В корневом Vite (`npm run dev`) пути `/api/v1` и `/media` проксируются на этот порт.
 
 ## Dev-вход
 
@@ -29,6 +30,7 @@ Health: `GET /api/v1/health`
 |------------|----------|
 | `PORT` | Порт (8787) |
 | `DATABASE_PATH` | Файл SQLite |
+| `AVATARS_DIR` | Каталог JPEG аватаров (по умолчанию рядом с SQLite) |
 | `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | Секреты JWT |
 | `ACCESS_TTL_SECONDS` | TTL access (900) |
 | `REFRESH_TTL_SECONDS` | TTL refresh (30d) |

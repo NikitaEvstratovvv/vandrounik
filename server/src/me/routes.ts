@@ -7,24 +7,27 @@ import {
   verifyEmailChallenge,
 } from '../auth/challenge.js'
 import { requireAuth, type AuthVars } from '../auth/middleware.js'
+import { deleteUserAvatarFiles, writeAvatarFromDataUrl } from '../avatars/store.js'
 import { findUserByEmail, updateUser, updateUserEmail, type ProfileAvatar } from '../users/repo.js'
 
 const PRESET_IDS = new Set(['stork', 'fox', 'bison', 'frog', 'snake', 'beaver', 'mouse'])
 
-function parseAvatar(value: unknown): ProfileAvatar | undefined {
+/** Write-side parse: presets as-is; custom expects JPEG data URL → file on disk. */
+function parseAvatarWrite(userId: string, value: unknown): ProfileAvatar | undefined {
   if (value == null) return undefined
   if (typeof value !== 'object') {
     throw new ApiError(400, 'validation_error', 'Некорректный avatar')
   }
-  const v = value as { kind?: unknown; id?: unknown; dataUrl?: unknown }
+  const v = value as { kind?: unknown; id?: unknown; dataUrl?: unknown; url?: unknown }
   if (v.kind === 'preset' && typeof v.id === 'string' && PRESET_IDS.has(v.id)) {
+    deleteUserAvatarFiles(userId)
     return { kind: 'preset', id: v.id }
   }
   if (v.kind === 'custom' && typeof v.dataUrl === 'string' && v.dataUrl.startsWith('data:image/')) {
     if (v.dataUrl.length > 400_000) {
       throw new ApiError(400, 'validation_error', 'Слишком большой файл аватара')
     }
-    return { kind: 'custom', dataUrl: v.dataUrl }
+    return writeAvatarFromDataUrl(userId, v.dataUrl)
   }
   throw new ApiError(400, 'validation_error', 'Некорректный avatar')
 }
@@ -38,7 +41,8 @@ meRoutes.get('/', (c) => c.json(c.get('user')))
 meRoutes.patch('/', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   const displayName = (body as { displayName?: unknown }).displayName
-  const avatar = parseAvatar((body as { avatar?: unknown }).avatar)
+  const user = c.get('user')
+  const avatar = parseAvatarWrite(user.id, (body as { avatar?: unknown }).avatar)
 
   if (displayName !== undefined && typeof displayName !== 'string') {
     throw new ApiError(400, 'validation_error', 'Некорректное имя')
@@ -47,7 +51,7 @@ meRoutes.patch('/', async (c) => {
     throw new ApiError(400, 'validation_error', 'Нечего обновлять')
   }
 
-  const updated = updateUser(c.get('user').id, {
+  const updated = updateUser(user.id, {
     displayName: typeof displayName === 'string' ? displayName : undefined,
     avatar,
   })
@@ -61,7 +65,7 @@ meRoutes.post('/email/start', async (c) => {
   const user = c.get('user')
 
   if (email === user.email) {
-    throw new ApiError(400, 'validation_error', 'Укажите новую почту')
+    throw new ApiError(400, 'validation_error', 'Укажи новую почту')
   }
   assertAllowed(email)
 
@@ -80,7 +84,7 @@ meRoutes.post('/email/verify', async (c) => {
   const user = c.get('user')
 
   if (email === user.email) {
-    throw new ApiError(400, 'validation_error', 'Укажите новую почту')
+    throw new ApiError(400, 'validation_error', 'Укажи новую почту')
   }
   assertAllowed(email)
 
@@ -93,7 +97,6 @@ meRoutes.post('/email/verify', async (c) => {
 
   const updated = updateUserEmail(user.id, email)
   if (!updated) {
-    // Race: email claimed after challenge, or user deleted.
     const stillExists = findUserByEmail(email)
     if (stillExists) throw new ApiError(409, 'conflict', 'Эта почта уже занята')
     throw new ApiError(404, 'not_found', 'Пользователь не найден')

@@ -58,7 +58,7 @@ export function AuthShell({ children }: AuthShellProps) {
                 VANDROǓNIK
               </Text>
               <Text w="full" fontFamily="heading" fontWeight="normal" fontSize="tagline" lineHeight="1">
-                Создай свое путешествие
+                Спланируй поездку по Беларуси
               </Text>
             </Flex>
 

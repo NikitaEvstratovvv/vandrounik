@@ -4,7 +4,7 @@
 
 **Статус:** auth, `/me`, trips и visited реализованы в [`server/`](../server/).  
 **Цель волны 1:** auth + профиль + trips + visited.  
-**Вне волны 1:** генерация маршрутов, Nominatim/OSRM, каталог POI, CDN аватаров, публичный шаринг, push.
+**Вне волны 1:** генерация маршрутов, Nominatim/OSRM, каталог POI, публичный шаринг, push.
 
 ## Decisions
 
@@ -57,14 +57,17 @@
 ```ts
 type ProfileAvatar =
   | { kind: 'preset'; id: AvatarPresetId }
-  | { kind: 'custom'; dataUrl: string }
+  | { kind: 'custom'; url: string }  // e.g. /media/avatars/{userId}-{unix}.jpg
 
 type AvatarPresetId =
   | 'stork' | 'fox' | 'bison' | 'frog' | 'snake' | 'beaver' | 'mouse'
 ```
 
-В v1 custom avatar — JPEG data URL (как сейчас). Лимит размера тела запроса: **512 KB** на `PATCH /me` с custom avatar. CDN — позже.
+Custom avatar files live on disk (`AVATARS_DIR`, default next to SQLite / Railway `/data/avatars`) and are served at `GET /media/avatars/:file`.
 
+**Write (`PATCH /me`):** send `{ kind: 'custom', dataUrl: 'data:image/jpeg;base64,…' }` (JPEG, body ≤ ~512 KB). Server stores the file and responds with `{ kind: 'custom', url }`.
+
+**Read (`User` / `GET /me`):** only `url`, never `dataUrl`. Legacy DB rows with `dataUrl` are migrated to a file on first read.
 ### `RouteStop`
 
 ```ts
@@ -220,8 +223,9 @@ type AuthResponse = {
 ### `PATCH /me`
 
 **Headers:** Bearer  
-**Body (частично):** `{ "displayName"?: string, "avatar"?: ProfileAvatar }`  
-**Response `200`:** `User`  
+**Body (частично):** `{ "displayName"?: string, "avatar"?: ProfileAvatarWrite }`  
+где `ProfileAvatarWrite` = preset **или** `{ kind: 'custom', dataUrl: string }` (JPEG data URL).  
+**Response `200`:** `User` (custom avatar в ответе всегда с `url`)  
 **Errors:** `validation_error`
 
 ### `POST /me/email/start`
@@ -394,8 +398,6 @@ Idempotent remove.
 - Proxy Nominatim / OSRM (можно отдельным infra-слоем без этого контракта)
 - Catalog / POI admin
 - Публичные ссылки на trip
-- Удаление аккаунта
-- Upload аватара на object storage
 
 ---
 
@@ -412,3 +414,4 @@ Idempotent remove.
 | Дата | Изменение |
 |------|-----------|
 | 2026-08-09 | Первая версия контракта (auth, trips, visited) |
+| 2026-09-23 | Custom avatar: файл на volume + `url`; PATCH принимает `dataUrl` |

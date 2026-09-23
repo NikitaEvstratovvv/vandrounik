@@ -11,6 +11,10 @@ export default defineConfig({
         target: 'http://localhost:8787',
         changeOrigin: true,
       },
+      '/media': {
+        target: 'http://localhost:8787',
+        changeOrigin: true,
+      },
       '/api/nominatim': {
         target: 'https://nominatim.openstreetmap.org',
         changeOrigin: true,

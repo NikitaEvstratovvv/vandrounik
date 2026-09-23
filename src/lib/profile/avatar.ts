@@ -7,8 +7,14 @@ export type AvatarPresetId =
   | 'beaver'
   | 'mouse'
 
+/** Stored / API avatar. Custom photos are URLs under `/media/avatars/…`. */
 export type ProfileAvatar =
   | { kind: 'preset'; id: AvatarPresetId }
+  | { kind: 'custom'; url: string }
+
+/** Local draft before save may still hold a JPEG data URL for preview. */
+export type AvatarDraft =
+  | ProfileAvatar
   | { kind: 'custom'; dataUrl: string }
 
 export const AVATAR_PRESETS: { id: AvatarPresetId; src: string; label: string }[] = [
@@ -23,21 +29,48 @@ export const AVATAR_PRESETS: { id: AvatarPresetId; src: string; label: string }[
 
 export const DEFAULT_AVATAR: ProfileAvatar = { kind: 'preset', id: 'stork' }
 
-export function avatarSrc(avatar: ProfileAvatar | undefined | null): string {
+export function avatarSrc(avatar: ProfileAvatar | AvatarDraft | undefined | null): string {
   if (!avatar) return '/figma/avatars/stork.png'
-  if (avatar.kind === 'custom') return avatar.dataUrl
+  if (avatar.kind === 'custom') {
+    if ('url' in avatar && typeof avatar.url === 'string') return avatar.url
+    if ('dataUrl' in avatar && typeof avatar.dataUrl === 'string') return avatar.dataUrl
+    return '/figma/avatars/stork.png'
+  }
   const preset = AVATAR_PRESETS.find((p) => p.id === avatar.id)
   return preset?.src ?? '/figma/avatars/stork.png'
 }
 
-export function avatarsEqual(a: ProfileAvatar, b: ProfileAvatar): boolean {
+export function avatarsEqual(a: AvatarDraft, b: AvatarDraft): boolean {
   if (a.kind !== b.kind) return false
   if (a.kind === 'preset' && b.kind === 'preset') return a.id === b.id
-  if (a.kind === 'custom' && b.kind === 'custom') return a.dataUrl === b.dataUrl
+  if (a.kind === 'custom' && b.kind === 'custom') {
+    const aUrl = 'url' in a ? a.url : undefined
+    const bUrl = 'url' in b ? b.url : undefined
+    const aData = 'dataUrl' in a ? a.dataUrl : undefined
+    const bData = 'dataUrl' in b ? b.dataUrl : undefined
+    if (aUrl && bUrl) return aUrl === bUrl
+    if (aData && bData) return aData === bData
+    return false
+  }
   return false
 }
 
-/** Сжать изображение до maxPx JPEG data URL для localStorage. */
+/** Normalize legacy session/API payloads that still used dataUrl. */
+export function normalizeProfileAvatar(raw: unknown): ProfileAvatar {
+  if (!raw || typeof raw !== 'object') return DEFAULT_AVATAR
+  const v = raw as { kind?: unknown; id?: unknown; url?: unknown; dataUrl?: unknown }
+  if (v.kind === 'preset' && typeof v.id === 'string') {
+    const id = v.id as AvatarPresetId
+    if (AVATAR_PRESETS.some((p) => p.id === id)) return { kind: 'preset', id }
+  }
+  if (v.kind === 'custom' && typeof v.url === 'string' && v.url.startsWith('/media/avatars/')) {
+    return { kind: 'custom', url: v.url }
+  }
+  // Stale local dataUrl cannot be shown after refresh without API migrate — fall back.
+  return DEFAULT_AVATAR
+}
+
+/** Сжать изображение до maxPx JPEG data URL для превью и загрузки. */
 export function resizeImageFile(file: File, maxPx = 256, quality = 0.82): Promise<string> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file)

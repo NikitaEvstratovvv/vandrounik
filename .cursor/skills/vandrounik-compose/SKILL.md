@@ -48,7 +48,7 @@ description: >-
 ## Примеры
 
 - Тип объекта в результатах S1 → сосед `Location.tsx`: title `sm semibold` + subtitle `xs muted`, разделитель `line`.
-- «Письмо ушло на {email}» на A1 → сосед `Auth.tsx`: muted `sm` под заголовком, без нового баннера.
+- «Отправили код на {email}» на A1 → сосед `Auth.tsx`: primary `sm` под заголовком, без нового баннера.
 - Empty для нового списка → сосед E5: иллюстрация из `public/figma/` + короткий текст + `PrimaryButton`.
 
 ## Чеклист

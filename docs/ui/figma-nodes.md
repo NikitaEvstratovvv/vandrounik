@@ -28,6 +28,8 @@ Profile section overview: [`304:2279`](https://www.figma.com/design/mAysLALLcMDA
 |----|--------|---------|------|------------|
 | A0 Auth email | implemented | `320:1635` / error `320:1711`+`320:1734` | `src/pages/Auth.tsx` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=320-1635) |
 | A1 Auth code | implemented | `332:1521` | `src/pages/Auth.tsx` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=332-1521) |
+| A1 sent-to hint | composed | — | `src/pages/Auth.tsx` | — |
+| A1 change email | composed | — | `src/pages/Auth.tsx` | — |
 | E0 Splash | retired | `120:361` | — (replaced by A0) | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=120-361) |
 | E1 Plan | implemented | `137:204` | `src/pages/Plan.tsx` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=137-204) |
 | E5 Trips | implemented | empty `272:1124` / list `272:1309` / cards `304:1924` / section `272:1021` | `src/pages/Trips.tsx` + `TripCard` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=272-1021) |

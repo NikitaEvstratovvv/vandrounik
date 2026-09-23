@@ -1,6 +1,8 @@
 import {
   DEFAULT_AVATAR,
   defaultDisplayName,
+  normalizeProfileAvatar,
+  type AvatarDraft,
   type ProfileAvatar,
 } from '@/lib/profile/avatar'
 import {
@@ -63,7 +65,7 @@ export function userToSession(user: ApiUser): AuthSession {
     email: user.email,
     username: user.username,
     displayName: user.displayName,
-    avatar: user.avatar,
+    avatar: normalizeProfileAvatar(user.avatar),
     provider: user.provider,
     createdAt: user.createdAt,
   }
@@ -78,7 +80,7 @@ function normalizeSession(raw: Partial<AuthSession> & { email?: string; userId?:
     email,
     username,
     displayName: raw.displayName?.trim() || defaultDisplayName(email, username),
-    avatar: raw.avatar ?? DEFAULT_AVATAR,
+    avatar: normalizeProfileAvatar(raw.avatar),
     provider: raw.provider === 'google' ? 'google' : 'email',
     createdAt: raw.createdAt || new Date().toISOString(),
   }
@@ -97,7 +99,9 @@ export function saveSession(session: AuthSession): void {
 }
 
 export async function updateSession(
-  patch: Partial<Pick<AuthSession, 'displayName' | 'avatar' | 'email' | 'username'>>,
+  patch: Partial<Pick<AuthSession, 'displayName' | 'email' | 'username'>> & {
+    avatar?: AvatarDraft
+  },
 ): Promise<AuthSession | null> {
   const current = loadSession()
   if (!current) return null
@@ -121,8 +125,13 @@ export async function updateSession(
 
   const next: AuthSession = {
     ...current,
-    ...patch,
     displayName: (patch.displayName ?? current.displayName).trim() || current.displayName,
+    avatar:
+      patch.avatar?.kind === 'preset'
+        ? patch.avatar
+        : patch.avatar?.kind === 'custom' && 'url' in patch.avatar
+          ? patch.avatar
+          : current.avatar,
   }
   if (patch.email) {
     next.email = patch.email.trim().toLowerCase()
@@ -230,7 +239,7 @@ export function hasInvalidEmailChars(value: string): boolean {
 }
 
 /** Текст ошибки под полем email — Figma node 320:1734 / 320:1731. */
-export const EMAIL_HINT = 'Используйте латиницу, цифры, точку и дефис'
+export const EMAIL_HINT = 'Используй латиницу, цифры, точку и дефис'
 
 /** Код из письма: ≥4 символа. */
 export function isValidMockCode(value: string): boolean {

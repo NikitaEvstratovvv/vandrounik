@@ -619,7 +619,7 @@ function buildInputStops(
   circular: boolean,
 ): RouteStop[] {
   if (!hasValidEndpoint(state.origin) || !hasValidEndpoint(state.destination)) {
-    throw new Error('Укажите начальную и конечную точку')
+    throw new Error('Укажи начальную и конечную точку')
   }
 
   return [
@@ -941,7 +941,7 @@ async function buildCandidate(
   interestLabels: string[],
 ): Promise<BuiltCandidate | null> {
   if (!hasValidEndpoint(state.origin) || !hasValidEndpoint(state.destination)) {
-    throw new Error('Укажите начальную и конечную точку')
+    throw new Error('Укажи начальную и конечную точку')
   }
 
   const circular = isCircular(state)
@@ -1019,7 +1019,7 @@ async function buildCandidate(
 
 export async function generateRoutes(state: WizardState): Promise<GenerationResult> {
   if (!hasValidEndpoint(state.origin) || !hasValidEndpoint(state.destination) || state.interests.length === 0) {
-    throw new Error('Укажите откуда, куда и что посмотреть')
+    throw new Error('Укажи откуда, куда и что посмотреть')
   }
 
   const interestLabels = INTERESTS.filter((interest) => state.interests.includes(interest.id)).map(

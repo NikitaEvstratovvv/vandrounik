@@ -12,6 +12,7 @@
 ## Behavior
 
 - Splash background + frosted card: wordmark, email, «Войти», Google.
-- Invalid email → red pill border + red text under field (no tooltip): «Используйте латиницу, цифры, точку и дефис».
+- Invalid email → red pill border + red text under field (no tooltip): «Используй латиницу, цифры, точку и дефис».
 - Valid email → pending → `/auth/code`.
+- Prefill from pending when returning from A1 («Изменить почту»).
 - Google (mock) → session → `/plan`.

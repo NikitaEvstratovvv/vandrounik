@@ -18,7 +18,7 @@ export async function sendLoginCode(
     from: env.emailFrom,
     to: email,
     subject,
-    text: `Ваш код: ${code}\n\nКод действует 10 минут.`,
+    text: `Твой код: ${code}\n\nКод действует 10 минут.`,
   })
   if (error) {
     console.error('[auth] Resend error', error)

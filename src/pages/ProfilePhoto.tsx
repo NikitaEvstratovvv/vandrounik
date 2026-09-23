@@ -8,9 +8,10 @@ import { loadSession, updateSession } from '@/lib/storage/auth'
 import {
   AVATAR_PRESETS,
   DEFAULT_AVATAR,
+  avatarSrc,
   avatarsEqual,
   resizeImageFile,
-  type ProfileAvatar,
+  type AvatarDraft,
 } from '@/lib/profile/avatar'
 
 type ProfilePhotoPanelProps = {
@@ -22,7 +23,7 @@ export function ProfilePhotoPanel({ onClose }: ProfilePhotoPanelProps) {
   const session = loadSession()
   const fileRef = useRef<HTMLInputElement>(null)
   const initial = session?.avatar ?? DEFAULT_AVATAR
-  const [draft, setDraft] = useState<ProfileAvatar>(initial)
+  const [draft, setDraft] = useState<AvatarDraft>(initial)
   const dirty = !avatarsEqual(draft, initial)
 
   if (!session) return <Navigate to="/" replace />
@@ -79,7 +80,7 @@ export function ProfilePhotoPanel({ onClose }: ProfilePhotoPanelProps) {
             {isCustomSelected ? (
               <>
                 <Image
-                  src={draft.dataUrl}
+                  src={avatarSrc(draft)}
                   alt=""
                   position="absolute"
                   inset="0"

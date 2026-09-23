@@ -1,9 +1,16 @@
 import { randomUUID } from 'node:crypto'
 import { getDb, type UserRow } from '../db.js'
+import { writeAvatarFromDataUrl } from '../avatars/store.js'
 
 export type ProfileAvatar =
   | { kind: 'preset'; id: string }
+  | { kind: 'custom'; url: string }
+
+/** Legacy rows may still have dataUrl until lazy-migrated. */
+type StoredAvatarJson =
+  | ProfileAvatar
   | { kind: 'custom'; dataUrl: string }
+  | { kind: 'custom'; url?: string; dataUrl?: string }
 
 export type User = {
   id: string
@@ -17,10 +24,33 @@ export type User = {
 
 const DEFAULT_AVATAR: ProfileAvatar = { kind: 'preset', id: 'stork' }
 
+function persistAvatar(id: string, avatar: ProfileAvatar): void {
+  getDb().prepare('UPDATE users SET avatar_json = ? WHERE id = ?').run(JSON.stringify(avatar), id)
+}
+
+function normalizeAvatar(userId: string, raw: StoredAvatarJson): ProfileAvatar {
+  if (raw.kind === 'preset' && typeof raw.id === 'string') {
+    return { kind: 'preset', id: raw.id }
+  }
+  if (raw.kind === 'custom' && typeof (raw as { url?: string }).url === 'string') {
+    return { kind: 'custom', url: (raw as { url: string }).url }
+  }
+  if (raw.kind === 'custom' && typeof (raw as { dataUrl?: string }).dataUrl === 'string') {
+    try {
+      const stored = writeAvatarFromDataUrl(userId, (raw as { dataUrl: string }).dataUrl)
+      persistAvatar(userId, stored)
+      return stored
+    } catch {
+      return DEFAULT_AVATAR
+    }
+  }
+  return DEFAULT_AVATAR
+}
+
 export function rowToUser(row: UserRow): User {
   let avatar: ProfileAvatar = DEFAULT_AVATAR
   try {
-    avatar = JSON.parse(row.avatar_json) as ProfileAvatar
+    avatar = normalizeAvatar(row.id, JSON.parse(row.avatar_json) as StoredAvatarJson)
   } catch {
     avatar = DEFAULT_AVATAR
   }

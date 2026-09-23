@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, mkdirSync } from 'node:fs'
 import { isAbsolute, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -37,9 +37,19 @@ function required(name: string, fallback?: string): string {
   return value
 }
 
+const databasePath = resolvePath(process.env.DATABASE_PATH ?? './data/vandrounik.sqlite', root)
+const avatarsDir = resolvePath(
+  process.env.AVATARS_DIR ?? resolve(dirname(databasePath), 'avatars'),
+  root,
+)
+
+mkdirSync(avatarsDir, { recursive: true })
+
 export const env = {
   port: Number(process.env.PORT ?? 8787),
-  databasePath: resolvePath(process.env.DATABASE_PATH ?? './data/vandrounik.sqlite', root),
+  databasePath,
+  /** Custom avatar JPEGs on Railway volume (default: next to SQLite). */
+  avatarsDir,
   /** Built Vite app (`dist/`). Absolute in Docker via STATIC_DIR. */
   staticDir: resolvePath(process.env.STATIC_DIR ?? '../dist', root),
   jwtAccessSecret: required('JWT_ACCESS_SECRET', 'dev-access-secret-change-me'),

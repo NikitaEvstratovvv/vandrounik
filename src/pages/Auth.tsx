@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { Flex, Text } from '@chakra-ui/react'
+import { Flex, Text, chakra } from '@chakra-ui/react'
 import {
   AuthField,
   AuthFieldError,
@@ -22,7 +22,8 @@ import {
 /** A0 — Email (+ error state Figma 320:1711 / 320:1734). Node 320:1635. */
 export function AuthEmailPage() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
+  const pending = loadPending()
+  const [email, setEmail] = useState(pending?.email ?? '')
   const [showError, setShowError] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -42,7 +43,7 @@ export function AuthEmailPage() {
       navigate('/auth/code', { replace: true })
     } catch (error) {
       const message =
-        error instanceof ApiClientError ? error.message : 'Не удалось отправить код. Запустите API и попробуйте снова.'
+        error instanceof ApiClientError ? error.message : 'Не удалось отправить код. Запусти API и попробуй снова.'
       setSubmitError(message)
     } finally {
       setBusy(false)
@@ -99,7 +100,7 @@ export function AuthCodePage() {
       navigate('/plan', { replace: true })
     } catch (error) {
       const message =
-        error instanceof ApiClientError ? error.message : 'Не удалось войти. Проверьте код и API.'
+        error instanceof ApiClientError ? error.message : 'Не удалось войти. Проверь код и API.'
       setSubmitError(message)
     } finally {
       setBusy(false)
@@ -117,8 +118,9 @@ export function AuthCodePage() {
             fontWeight="normal"
             lineHeight="sm"
             color="primary"
+            overflowWrap="anywhere"
           >
-            Введите код из письма
+            Отправили код на {pending.email}
           </Text>
           <AuthField
             value={code}
@@ -131,6 +133,27 @@ export function AuthCodePage() {
           />
           {submitError ? <AuthFieldError>{submitError}</AuthFieldError> : null}
           <AuthSubmit disabled={busy} />
+          <chakra.button
+            type="button"
+            onClick={() => navigate('/', { replace: true })}
+            w="full"
+            h="48px"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            bg="transparent"
+            color="primary"
+            fontFamily="body"
+            fontSize="base"
+            fontWeight="medium"
+            lineHeight="base"
+            borderRadius="card"
+            cursor="pointer"
+            transition="opacity 150ms"
+            _hover={{ opacity: 0.75 }}
+          >
+            Изменить почту
+          </chakra.button>
         </AuthForm>
       </AuthShell>
     </RedirectIfAuthed>

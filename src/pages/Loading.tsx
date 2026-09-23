@@ -54,7 +54,7 @@ export function Loading() {
         navigate('/plan/results', { replace: true })
       } catch {
         if (requestId === requestIdRef.current) {
-          setError('Не удалось построить маршрут. Попробуйте выбрать другие точки или повторить позже.')
+          setError('Не удалось построить маршрут. Попробуй выбрать другие точки или повторить позже.')
         }
       }
     }

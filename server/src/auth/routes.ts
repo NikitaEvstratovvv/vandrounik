@@ -41,7 +41,7 @@ authRoutes.post('/refresh', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   const refreshToken = (body as { refreshToken?: unknown }).refreshToken
   if (typeof refreshToken !== 'string' || !refreshToken) {
-    throw new ApiError(400, 'validation_error', 'Укажите refreshToken')
+    throw new ApiError(400, 'validation_error', 'Укажи refreshToken')
   }
   const row = findValidRefresh(refreshToken)
   if (!row) throw new ApiError(401, 'unauthorized', 'Сессия истекла')

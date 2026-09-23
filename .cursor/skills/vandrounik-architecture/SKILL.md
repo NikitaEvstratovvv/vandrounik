@@ -39,7 +39,7 @@ A0 Auth email (/)
                           → E3 Detail /plan/results/:variantId (deep-link)
 ```
 
-Auth is mock (`src/lib/storage/auth.ts`). Session includes `displayName` + `avatar` (preset id or custom JPEG data URL). Email errors: red text under field (Figma `320:1734`), no tooltip. Authenticated app uses `RequireAuth` + `TabShell`. Profile settings are SlideOverlays hosted by `Profile.tsx` (same URL-sync pattern as Plan; no TabBar while open); edits use `updateSession`. Motion: skill `vandrounik-motion`.
+Auth is mock (`src/lib/storage/auth.ts`). Session includes `displayName` + `avatar` (preset id or custom `/media/avatars/…` url). Email errors: red text under field (Figma `320:1734`), no tooltip. Authenticated app uses `RequireAuth` + `TabShell`. Profile settings are SlideOverlays hosted by `Profile.tsx` (same URL-sync pattern as Plan; no TabBar while open); edits use `updateSession`. Motion: skill `vandrounik-motion`.
 
 **TabBar** (Figma `271:1300`): only on exact `/plan`, `/trips`, `/profile`. Hidden on overlay URLs, `/trips/:tripId`, `/profile/*` nested routes, when Plan/Profile/Trips `setForceHidden(true)`, and on `/plan/loading` / auth.
 

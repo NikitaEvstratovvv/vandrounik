@@ -59,7 +59,7 @@ export function TripCompletedPanel({ onNewRoute, onBackToRoute }: TripCompletedP
             textAlign="center"
             w="full"
           >
-            Возвращайтесь по скорее и&nbsp;отправляйтесь в&nbsp;новое путешествие
+            Возвращайся по скорее и&nbsp;отправляйся в&nbsp;новое путешествие
           </Text>
         </Flex>
 

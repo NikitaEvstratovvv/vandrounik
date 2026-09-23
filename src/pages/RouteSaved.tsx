@@ -64,7 +64,7 @@ export function RouteSavedPanel({ trip, onClose, onOpenTrip, onCreateNew }: Rout
             textAlign="center"
             w="full"
           >
-            Можете начать поездку или создать новый&nbsp;маршрут
+            Можешь начать поездку или создать новый&nbsp;маршрут
           </Text>
         </Flex>
 

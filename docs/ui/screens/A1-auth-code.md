@@ -10,6 +10,7 @@
 ## Behavior
 
 - Requires pending email from A0; otherwise → `/`.
-- Hint «Введите код из письма», field «Код».
+- Hint (composed, no separate Figma node): «Отправили код на {email}», primary `sm`. Field «Код».
+- «Изменить почту» (composed) → `/` with pending email prefilled on A0.
 - Mock: код ≥4 символов → session → `/plan` (шага username нет).
 - Google (mock) → session → `/plan`.

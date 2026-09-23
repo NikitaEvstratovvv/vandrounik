@@ -26,13 +26,13 @@ Hosted by `Profile.tsx` (Plan-style overlays + URL sync). Motion: skill `vandrou
 | Settings | `/profile/settings` | `ProfileSettingsPanel` | `350:2045` / filled [`351:2148`](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=351-2148) | Slide in/out; Имя/Почта show session values under labels |
 | Photo | `/profile/settings/photo` | `ProfilePhotoPanel` | `351:2207` / `351:2310` | Slide `zIndex={16}`; avatar micro `150ms` |
 | Name | `/profile/settings/name` | `ProfileNamePanel` | `350:2088` → success `350:2114` | Slide `zIndex={16}`; success fade |
-| Email | `/profile/settings/email` | `ProfileEmailPanel` | `332:1568` | Slide `zIndex={16}` |
-| Email code | `/profile/settings/email/code` | same panel, step `code` | `332:1642` | Content `vandr-fade-in` |
+| Email | `/profile/settings/email` | `ProfileEmailPanel` | `332:1568` | Slide `zIndex={16}`. Prefill from email-change pending when returning from code |
+| Email code | `/profile/settings/email/code` | same panel, step `code` | `332:1642` | Content `vandr-fade-in`. Hint composed: «Отправили код на {email}». Back → email step with pending prefilled |
 | Email done | `/profile/settings/email/done` | same panel, step `done` | `332:1673` | Success fade |
 
 Hub: content enter fade `280ms`; logout opacity `150ms`.
 
-Session fields: `displayName`, `avatar` (`preset` \| `custom` data URL) in `src/lib/storage/auth.ts`. Trash icons not rendered.
+Session fields: `displayName`, `avatar` (`preset` \| `custom` with `/media/avatars/…` url) in `src/lib/storage/auth.ts`. Trash icons not rendered.
 
 ## Photo rules
 
@@ -40,4 +40,4 @@ Session fields: `displayName`, `avatar` (`preset` \| `custom` data URL) in `src/
 - Grid: 4 equal columns (`1fr`), gap `16px`, cells `aspect-ratio: 1` (Figma `351:2207`).
 - Selected = 3px `foreground` ring (transparent border when idle so size stays stable).
 - Uploaded custom: photo + `canvas` overlay @ 30% + centered white `PenIcon` 20px (Figma `351:2328`); tap reopens file picker.
-- Save disabled until draft ≠ session avatar; custom images resized ~256px JPEG.
+- Save disabled until draft ≠ session avatar; custom images resized ~256px JPEG, uploaded as data URL then stored as `/media/avatars/…`.

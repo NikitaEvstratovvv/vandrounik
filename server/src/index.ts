@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
@@ -12,6 +12,7 @@ import { meRoutes } from './me/routes.js'
 import { tripsRoutes } from './trips/routes.js'
 import { visitedRoutes } from './visited/routes.js'
 import { proxyRequest } from './proxy.js'
+import { resolveAvatarFile } from './avatars/store.js'
 
 const NOMINATIM_UA = 'Vandrounik/0.1.0 (https://vandrounik.of.by; travel PWA)'
 
@@ -47,6 +48,22 @@ app.all('/api/osrm/*', (c) =>
   proxyRequest(c, 'https://router.project-osrm.org', '/api/osrm'),
 )
 
+app.get('/media/avatars/:file', (c) => {
+  const file = basename(c.req.param('file'))
+  const full = resolveAvatarFile(file)
+  if (!full) {
+    return c.json({ error: { code: 'not_found', message: 'Не найдено' } }, 404)
+  }
+  const body = readFileSync(full)
+  return new Response(body, {
+    status: 200,
+    headers: {
+      'Content-Type': 'image/jpeg',
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    },
+  })
+})
+
 app.onError((err, c) => {
   const { status, body } = errorBody(err instanceof Error ? err : new Error(String(err)))
   return c.json(body, status as 400)
@@ -60,13 +77,13 @@ const indexHtml = hasStatic ? readFileSync(indexHtmlPath, 'utf8') : null
 if (hasStatic) {
   const staticMw = serveStatic({ root: staticRoot })
   app.use('*', async (c, next) => {
-    if (c.req.path.startsWith('/api/')) return next()
+    if (c.req.path.startsWith('/api/') || c.req.path.startsWith('/media/')) return next()
     return staticMw(c, next)
   })
 }
 
 app.notFound((c) => {
-  if (c.req.path.startsWith('/api/')) {
+  if (c.req.path.startsWith('/api/') || c.req.path.startsWith('/media/')) {
     return c.json({ error: { code: 'not_found', message: 'Не найдено' } }, 404)
   }
   if (indexHtml) return c.html(indexHtml)
@@ -76,6 +93,7 @@ app.notFound((c) => {
 serve({ fetch: app.fetch, port: env.port }, (info) => {
   console.log(`Vandrounik http://localhost:${info.port}`)
   console.log(`API http://localhost:${info.port}/api/v1`)
+  console.log(`Avatars ${env.avatarsDir}`)
   if (hasStatic) console.log(`Static ${staticRoot}`)
 })
 
