@@ -60,7 +60,7 @@ export function LocationPanel({ point, onClose, focusSeq = 0 }: LocationPanelPro
     abortRef.current = null
 
     const q = value.trim()
-    if (!q) {
+    if (q.length < 3) {
       reqId.current++
       setStatus('empty')
       setResults([])
@@ -164,7 +164,12 @@ export function LocationPanel({ point, onClose, focusSeq = 0 }: LocationPanelPro
             {status === 'empty' && <EmptyState text={emptyText} variant="empty" />}
             {status === 'nothing' && <EmptyState text="Ничего не найдено" variant="nothing" />}
             {status === 'loading' && <EmblemLoader size={64} />}
-            {status === 'error' && <EmptyState text="Не удалось выполнить поиск. Проверь интернет и попробуй ещё раз" variant="nothing" />}
+            {status === 'error' && (
+              <EmptyState
+                text="Не удалось выполнить поиск. Проверь интернет и попробуй ещё раз"
+                variant="nothing"
+              />
+            )}
           </Flex>
         )}
         {status === 'results' && (
@@ -188,7 +193,7 @@ export function LocationPanel({ point, onClose, focusSeq = 0 }: LocationPanelPro
                       {place.title}
                     </Text>
                     <Text fontSize="xs" fontWeight="normal" lineHeight="xs" color="muted" w="full">
-                      {place.distanceKm && place.distanceKm > 0 ? formatDistance(place.distanceKm) : place.subtitle}
+                      {placeSecondaryLine(place)}
                     </Text>
                   </Flex>
                   {idx < results.length - 1 && <Box h="1px" w="full" bg="line" />}
@@ -200,6 +205,14 @@ export function LocationPanel({ point, onClose, focusSeq = 0 }: LocationPanelPro
       </Flex>
     </>
   )
+}
+
+/** Вторая строка подсказки: путь; для «Куда» с origin — `путь · N км`. */
+function placeSecondaryLine(place: Place): string {
+  const distance =
+    place.distanceKm && place.distanceKm > 0 ? formatDistance(place.distanceKm) : ''
+  if (place.subtitle && distance) return `${place.subtitle} · ${distance}`
+  return place.subtitle || distance
 }
 
 function EmptyState({ text, variant }: { text: string; variant: 'empty' | 'nothing' }) {

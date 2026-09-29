@@ -10,7 +10,10 @@
 ## Behavior
 
 - Slide overlay from E1; `point` selects origin vs destination field focus.
-- Nominatim search via `/api/nominatim` (Belarus).
+- Photon search via `/api/photon` (Belarus bbox; ru↔be query expand + Russian labels; starts at 3 characters).
+- Also searches local POI catalog (`ROUTE_PLACES`: castles, temples, estates, reserves, DOTs); strong name matches appear first.
+- Suggestion subtitle: `Тип · город, область` (e.g. `Улица · Гродно, Гродненская область`, `Город · Минская область`); POI uses catalog type (`Замок`).
+- For «Куда» with origin set: subtitle shows `путь · N км` (type/city/region + distance).
 - Idle: `/figma/illustration.png`; empty results: `/figma/nothing-found.png`.
 - Writes place into wizard (`setOrigin` / `setDestination`).
 

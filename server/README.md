@@ -55,7 +55,7 @@ Avatars: `GET /media/avatars/:file` (файлы в `AVATARS_DIR`)
 
 Не коммитьте `server/.env` и `server/data/`.
 
-Прод на Railway: один контейнер отдаёт API + статику + прокси Nominatim/OSRM. Инструкция: [`docs/deploy.md`](../docs/deploy.md).
+Прод на Railway: один контейнер отдаёт API + статику + прокси Photon/OSRM. Инструкция: [`docs/deploy.md`](../docs/deploy.md).
 
 ## Реализовано в этой волне
 

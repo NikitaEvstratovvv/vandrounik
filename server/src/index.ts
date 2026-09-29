@@ -44,6 +44,16 @@ app.all('/api/nominatim/*', (c) =>
     'User-Agent': NOMINATIM_UA,
   }),
 )
+app.all('/api/photon', (c) =>
+  proxyRequest(c, 'https://photon.komoot.io/api', '/api/photon', {
+    'User-Agent': NOMINATIM_UA,
+  }),
+)
+app.all('/api/photon/*', (c) =>
+  proxyRequest(c, 'https://photon.komoot.io/api', '/api/photon', {
+    'User-Agent': NOMINATIM_UA,
+  }),
+)
 app.all('/api/osrm/*', (c) =>
   proxyRequest(c, 'https://router.project-osrm.org', '/api/osrm'),
 )

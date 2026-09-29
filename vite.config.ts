@@ -21,6 +21,12 @@ export default defineConfig({
         rewrite: (p) => p.replace(/^\/api\/nominatim/, ''),
         headers: { 'User-Agent': 'Vandrounik/0.1.0 (travel PWA)' },
       },
+      '/api/photon': {
+        target: 'https://photon.komoot.io',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/api\/photon/, '/api'),
+        headers: { 'User-Agent': 'Vandrounik/0.1.0 (travel PWA)' },
+      },
       '/api/osrm': {
         target: 'https://router.project-osrm.org',
         changeOrigin: true,

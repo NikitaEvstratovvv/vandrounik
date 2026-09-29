@@ -77,7 +77,7 @@ A0 Auth email (/)
 | E1 | `src/pages/Plan.tsx` | Хаб: транспорт, направление, интересы, длительность |
 | E5 | `src/pages/Trips.tsx` | Мои маршруты (пусто / список / деталь) |
 | E8 | `src/pages/Profile.tsx` | Профиль + настройки (фото / имя / почта) |
-| S1 | `src/pages/Location.tsx` | Поиск Nominatim (откуда/куда) |
+| S1 | `src/pages/Location.tsx` | Поиск Photon (откуда/куда) |
 | S2 | `src/pages/Interests.tsx` | 5 категорий интересов |
 | BS1 | `src/components/DurationSheet.tsx` | Длительность (часы / км) |
 | L1 | `src/pages/Loading.tsx` | Генерация маршрута (OSRM) |
@@ -88,7 +88,7 @@ A0 Auth email (/)
 
 ### Генерация маршрута
 
-- **Поиск:** Nominatim (`/api/nominatim`), Беларусь
+- **Поиск:** Photon (`/api/photon`), Беларусь, от 3 символов
 - **Маршрут:** OSRM Trip (`/api/osrm`) + POI из `ROUTE_PLACES`
 - **Варианты:** 3 (`MIN_ROUTE_VARIANTS`)
 - **Круговой:** если origin ≈ destination (≤ 0.1 км)

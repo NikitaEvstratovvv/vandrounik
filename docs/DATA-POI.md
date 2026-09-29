@@ -10,7 +10,8 @@
 | `src/data/routePlaces.ts` | Объединяет seed и OSM-данные в `ROUTE_PLACES` |
 | `src/data/belarus-osm-places.json` | Точки из Overpass (вся Беларусь) |
 | `scripts/data/belarus-osm-raw.json` | Сырой ответ Overpass для проверки |
-| `src/lib/geocoding/nominatim.ts` | Поиск «Откуда» / «Куда» через Nominatim |
+| `src/lib/geocoding/photon.ts` | Поиск «Откуда» / «Куда» через Photon (префикс от 3 символов) |
+| `src/lib/geocoding/beRu.ts` | Варианты запроса ru↔be и локализация подписей в русский |
 | `src/lib/routing/osrm.ts` | Дорожный маршрут и geometry через OSRM |
 
 ## Категории интересов (фильтр S2)
@@ -65,12 +66,12 @@ npm run enrich:place-images
 
 ## Построение маршрута
 
-Пользовательские точки «Откуда» и «Куда» геокодируются через Nominatim (`countrycodes=by`).  
+Пользовательские точки «Откуда» и «Куда» геокодируются через Photon (`/api/photon`, bbox Беларуси + фильтр `countrycode=by`) и параллельно ищутся в локальном каталоге `ROUTE_PLACES` (замки, храмы, усадьбы, заповедники, ДОТы). Запрос уходит только при ≥3 символах. Photon даёт префиксный автокомплит (города и улицы). Модуль [`src/lib/geocoding/beRu.ts`](../src/lib/geocoding/beRu.ts) расширяет запрос ru↔be и локализует подписи в UI на русский. В подсказках вторая строка: `Тип · город, область` (например `Улица · Гродно, Гродненская область`). Магазины/кафе отсекаются — остаются `place` / `highway` / `railway` / `boundary` / `waterway` (+ здания с адресом). Сильные совпадения по названию POI показываются первыми.  
 Генератор выбирает POI из локальной базы `ROUTE_PLACES` по выбранным интересам и близости к коридору A→B, затем строит дорожный маршрут через публичный OSRM demo server.
 
 На карте E2/E3 маркеры POI окрашиваются по `primaryInterest`; старт и финиш — нейтральные.
 
-Публичные Nominatim / OSRM имеют rate limits и подходят для разработки. Для production потребуется собственный инстанс или коммерческий routing/geocoding provider.
+Публичные Photon / OSRM имеют rate limits и подходят для разработки. Для production потребуется собственный инстанс или коммерческий routing/geocoding provider.
 
 ## Лицензия данных OSM
 
