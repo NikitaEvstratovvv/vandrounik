@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Box, Flex, Text } from '@chakra-ui/react'
 import { Header } from '@/components/Header'
 import { PrimaryButton } from '@/components/PrimaryButton'
-import { CheckIcon } from '@/components/icons'
+import { CheckIcon, MinusIcon } from '@/components/icons'
 import { INTERESTS } from '@/data/interests'
 import { useWizard } from '@/store/wizard-context'
 import type { InterestId } from '@/types'
@@ -11,13 +11,22 @@ type InterestsPanelProps = {
   onClose: () => void
 }
 
+const ALL_IDS = INTERESTS.map((i) => i.id)
+
 /** S2 — Что посмотреть (выбор категорий). 1:1 с Figma (node 147:667). */
 export function InterestsPanel({ onClose }: InterestsPanelProps) {
   const { state, setInterests } = useWizard()
   const [selected, setSelected] = useState<InterestId[]>(state.interests)
 
+  const allSelected = selected.length === ALL_IDS.length
+  const someSelected = selected.length > 0 && !allSelected
+
   const toggle = (id: InterestId) => {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  }
+
+  const toggleAll = () => {
+    setSelected(allSelected ? [] : [...ALL_IDS])
   }
 
   const apply = () => {
@@ -30,39 +39,22 @@ export function InterestsPanel({ onClose }: InterestsPanelProps) {
       <Header variant="back" title="Что посмотреть" onBack={onClose} />
 
       <Flex direction="column" flex="1" minH="0" px="16px" pb="16px" gap="12px" overflowY="auto">
-        {INTERESTS.map((interest) => {
-          const isSelected = selected.includes(interest.id)
-          return (
-            <Flex
-              key={interest.id}
-              as="button"
-              onClick={() => toggle(interest.id)}
-              aria-pressed={isSelected}
-              w="full"
-              align="center"
-              gap="16px"
-              textAlign="left"
-              px="16px"
-              py="12px"
-              bg="background"
-              borderRadius="card"
-              borderWidth="1px"
-              borderColor={isSelected ? 'primary' : 'line'}
-              cursor="pointer"
-              transition="border-color 150ms"
-            >
-              <Flex direction="column" flex="1" minW="0" gap="4px">
-                <Text fontSize="sm" fontWeight="medium" lineHeight="sm" color="foreground">
-                  {interest.title}
-                </Text>
-                <Text fontSize="sm" fontWeight="normal" lineHeight="sm" color="muted">
-                  {interest.description}
-                </Text>
-              </Flex>
-              <Checkbox checked={isSelected} />
-            </Flex>
-          )
-        })}
+        <InterestRow
+          title="Всё интересное по пути"
+          description="От ДОТов до замков"
+          selected={allSelected}
+          indeterminate={someSelected}
+          onToggle={toggleAll}
+        />
+        {INTERESTS.map((interest) => (
+          <InterestRow
+            key={interest.id}
+            title={interest.title}
+            description={interest.description}
+            selected={selected.includes(interest.id)}
+            onToggle={() => toggle(interest.id)}
+          />
+        ))}
       </Flex>
 
       <Box p="16px">
@@ -74,8 +66,62 @@ export function InterestsPanel({ onClose }: InterestsPanelProps) {
   )
 }
 
-function Checkbox({ checked }: { checked: boolean }) {
-  if (checked) {
+function InterestRow({
+  title,
+  description,
+  selected,
+  indeterminate = false,
+  onToggle,
+}: {
+  title: string
+  description: string
+  selected: boolean
+  indeterminate?: boolean
+  onToggle: () => void
+}) {
+  const active = selected || indeterminate
+  const ariaChecked = indeterminate ? 'mixed' : selected
+
+  return (
+    <Flex
+      as="button"
+      onClick={onToggle}
+      aria-checked={ariaChecked}
+      role="checkbox"
+      w="full"
+      align="center"
+      gap="16px"
+      textAlign="left"
+      px="16px"
+      py="12px"
+      bg="background"
+      borderRadius="card"
+      borderWidth="1px"
+      borderColor={active ? 'primary' : 'line'}
+      cursor="pointer"
+      transition="border-color 150ms"
+    >
+      <Flex direction="column" flex="1" minW="0" gap="4px">
+        <Text fontSize="sm" fontWeight="medium" lineHeight="sm" color="foreground">
+          {title}
+        </Text>
+        <Text fontSize="sm" fontWeight="normal" lineHeight="sm" color="muted">
+          {description}
+        </Text>
+      </Flex>
+      <Checkbox checked={selected} indeterminate={indeterminate} />
+    </Flex>
+  )
+}
+
+function Checkbox({
+  checked,
+  indeterminate = false,
+}: {
+  checked: boolean
+  indeterminate?: boolean
+}) {
+  if (checked || indeterminate) {
     return (
       <Flex
         boxSize="20px"
@@ -87,7 +133,7 @@ function Checkbox({ checked }: { checked: boolean }) {
         borderRadius="7.5px"
         boxShadow="check"
       >
-        <CheckIcon size={15} />
+        {indeterminate ? <MinusIcon size={15} strokeWidth={2.5} /> : <CheckIcon size={15} />}
       </Flex>
     )
   }

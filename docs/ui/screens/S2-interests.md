@@ -10,6 +10,7 @@
 ## Behavior
 
 - Multi-select of **5** categories from [`src/data/interests.ts`](../../../src/data/interests.ts): estates, castles, temples, reserves, dots.
+- Top row **«Всё интересное по пути»** («От ДОТов до замков»): selects or clears all five categories (stores the five `InterestId`s in wizard — no separate `all` id). Checkbox: empty / indeterminate (partial) / checked (all).
 - Titles match Figma; descriptions in code.
 - Persist via wizard `setInterests`.
 

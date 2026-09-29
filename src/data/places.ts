@@ -24,8 +24,11 @@ function isDuplicate(a: Place, b: Place): boolean {
 }
 
 /**
- * S1 search: Photon (cities / streets / addresses) + local POI catalog
- * (castles, temples, estates, reserves, DOTs).
+ * Canonical place search for any UI (S1 origin/destination, future catalog / map / geolocation).
+ * Combines Photon (cities, streets, addresses in Belarus) with the local POI catalog
+ * (`ROUTE_PLACES`: castles, temples, estates, reserves, DOTs).
+ * Pages must import this — not `@/lib/geocoding/photon` or `routePlacesSearch` directly.
+ * See docs/DATA-POI.md «Контракт поиска мест».
  */
 export async function searchPlaces(
   query: string,
