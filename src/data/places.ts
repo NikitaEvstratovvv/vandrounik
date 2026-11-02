@@ -3,11 +3,11 @@ import {
   isStrongPoiMatch,
   searchRoutePlacesLocal,
 } from '@/lib/geocoding/routePlacesSearch'
-import { searchPlaces as searchPhoton } from '@/lib/geocoding/photon'
+import { searchPlaces as searchNominatim } from '@/lib/geocoding/nominatim'
 import type { LatLng, Place } from '@/types'
 
 const RESULT_LIMIT = 8
-/** Treat as same map point when merging Photon + POI hits. */
+/** Treat as same map point when merging Nominatim + POI hits. */
 const DEDUPE_KM = 0.2
 
 function labelKey(place: Place): string {
@@ -25,9 +25,9 @@ function isDuplicate(a: Place, b: Place): boolean {
 
 /**
  * Canonical place search for any UI (S1 origin/destination, future catalog / map / geolocation).
- * Combines Photon (cities, streets, addresses in Belarus) with the local POI catalog
- * (`ROUTE_PLACES`: castles, temples, estates, reserves, DOTs).
- * Pages must import this — not `@/lib/geocoding/photon` or `routePlacesSearch` directly.
+ * Combines Nominatim (cities, streets, addresses in Belarus, Russian labels via accept-language)
+ * with the local POI catalog (`ROUTE_PLACES`: castles, temples, estates, reserves, DOTs).
+ * Pages must import this — not `@/lib/geocoding/nominatim` or `routePlacesSearch` directly.
  * See docs/DATA-POI.md «Контракт поиска мест».
  */
 export async function searchPlaces(
@@ -38,7 +38,7 @@ export async function searchPlaces(
   if (q.length < 3) return []
 
   const [geo, pois] = await Promise.all([
-    searchPhoton(q, options),
+    searchNominatim(q, options),
     Promise.resolve(searchRoutePlacesLocal(q)),
   ])
 

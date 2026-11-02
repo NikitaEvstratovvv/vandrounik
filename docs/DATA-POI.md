@@ -10,8 +10,7 @@
 | `src/data/routePlaces.ts` | Объединяет seed и OSM-данные в `ROUTE_PLACES` |
 | `src/data/belarus-osm-places.json` | Точки из Overpass (вся Беларусь) |
 | `scripts/data/belarus-osm-raw.json` | Сырой ответ Overpass для проверки |
-| `src/lib/geocoding/photon.ts` | Поиск «Откуда» / «Куда» через Photon (префикс от 3 символов) |
-| `src/lib/geocoding/beRu.ts` | Варианты запроса ru↔be и локализация подписей в русский |
+| `src/lib/geocoding/nominatim.ts` | Поиск «Откуда» / «Куда» через Nominatim (`accept-language=ru`) |
 | `src/lib/routing/osrm.ts` | Дорожный маршрут и geometry через OSRM |
 
 ## Категории интересов (фильтр S2)
@@ -68,14 +67,14 @@ npm run enrich:place-images
 
 Единые правила для любого UI, где пользователь ищет точку на карте Беларуси (S1 «Откуда»/«Куда», будущие каталог / тап на карте / геолокация).
 
-**Публичный API для страниц:** только [`searchPlaces`](../src/data/places.ts) из `@/data/places`. Не вызывать `@/lib/geocoding/photon` или `routePlacesSearch` напрямую из UI. Reverse geocode (карта, «моё местоположение») должен возвращать тот же тип [`Place`](../src/types/index.ts) и те же правила подписи.
+**Публичный API для страниц:** только [`searchPlaces`](../src/data/places.ts) из `@/data/places`. Не вызывать `@/lib/geocoding/nominatim` или `routePlacesSearch` напрямую из UI. Reverse geocode (карта, «моё местоположение») должен возвращать тот же тип [`Place`](../src/types/index.ts) и те же правила подписи.
 
 | Правило | Детали |
 |---|---|
-| Вход | Строка ≥3 символов; для «Куда» опционально `near` (bias + расстояние в UI) |
-| Источники | Photon (`/api/photon`, bbox Беларуси) + локальный `ROUTE_PLACES` |
-| Язык | ru↔be в [`beRu.ts`](../src/lib/geocoding/beRu.ts): варианты запроса и локализация подписей |
-| Фильтр Photon | `place` / `highway` / `railway` / `boundary` / `waterway` + `building` с улицей и номером; без магазинов/кафе |
+| Вход | Строка ≥3 символов; для «Куда» опционально `near` (viewbox bias + расстояние в UI) |
+| Источники | Nominatim (`/api/nominatim/search`, `countrycodes=by`) + локальный `ROUTE_PLACES` |
+| Язык | `accept-language=ru` — русские подписи из `name:ru` / локализованного `address` |
+| Фильтр | без `shop` / `craft` / `amenity`; здания и улицы с адресом остаются |
 | Ранг | Населённые пункты выше улиц; сильные совпадения POI сверху |
 | Дедуп | По `title\|subtitle` и близости ~200 м |
 | Подсказка | `title` + `subtitle`: `Тип · город, область` (тип только если уверенный: Город, Улица, Река…); POI — тип из каталога; для «Куда» UI добавляет `· N км` |
@@ -88,7 +87,7 @@ npm run enrich:place-images
 
 На карте E2/E3 маркеры POI окрашиваются по `primaryInterest`; старт и финиш — нейтральные.
 
-Публичные Photon / OSRM имеют rate limits и подходят для разработки. Для production потребуется собственный инстанс или коммерческий routing/geocoding provider.
+Публичные Nominatim / OSRM имеют rate limits (Nominatim ≈ 1 запрос/с) и подходят для разработки. Для production потребуется собственный инстанс или коммерческий routing/geocoding provider.
 
 ## Лицензия данных OSM
 

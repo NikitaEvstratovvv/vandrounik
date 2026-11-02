@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { clearPhotonCache } from '@/lib/geocoding/photon'
+import { clearNominatimCache } from '@/lib/geocoding/nominatim'
 import { searchPlaces } from '@/data/places'
 
 describe('searchPlaces (geo + POI)', () => {
   beforeEach(() => {
-    clearPhotonCache()
+    clearNominatimCache()
     vi.stubGlobal('fetch', vi.fn())
   })
 
@@ -13,9 +13,9 @@ describe('searchPlaces (geo + POI)', () => {
     vi.restoreAllMocks()
   })
 
-  it('puts Mir castle from local catalog ahead of empty Photon', async () => {
+  it('puts Mir castle from local catalog ahead of empty Nominatim', async () => {
     vi.mocked(fetch).mockImplementation(async () =>
-      new Response(JSON.stringify({ features: [] }), {
+      new Response(JSON.stringify([]), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       }),
@@ -29,54 +29,58 @@ describe('searchPlaces (geo + POI)', () => {
     expect(places[0]?.subtitle).toMatch(/замок/i)
   })
 
-  it('still returns Photon cities when no POI match', async () => {
+  it('still returns Nominatim cities when no POI match', async () => {
     vi.mocked(fetch).mockImplementation(async () =>
       new Response(
-        JSON.stringify({
-          features: [
-            {
-              type: 'Feature',
-              geometry: { type: 'Point', coordinates: [27.5615, 53.9023] },
-              properties: {
-                osm_id: 59195,
-                osm_type: 'R',
-                osm_key: 'place',
-                osm_value: 'city',
-                name: 'Мінск',
-                state: 'Мінская вобласць',
-                countrycode: 'BY',
-              },
+        JSON.stringify([
+          {
+            place_id: 1,
+            osm_type: 'relation',
+            osm_id: 59195,
+            lat: '53.9023',
+            lon: '27.5615',
+            name: 'Минск',
+            display_name: 'Минск, Минская область, Беларусь',
+            category: 'boundary',
+            type: 'administrative',
+            addresstype: 'city',
+            address: {
+              city: 'Минск',
+              state: 'Минская область',
+              country_code: 'by',
             },
-          ],
-        }),
+          },
+        ]),
         { status: 200, headers: { 'Content-Type': 'application/json' } },
       ),
     )
 
-    const places = await searchPlaces('Мінск')
+    const places = await searchPlaces('Минск')
 
     expect(places.some((p) => p.title === 'Минск')).toBe(true)
   })
 
-  it('dedupes Photon hit near a matching POI', async () => {
+  it('dedupes Nominatim hit near a matching POI', async () => {
     vi.mocked(fetch).mockImplementation(async () =>
       new Response(
-        JSON.stringify({
-          features: [
-            {
-              type: 'Feature',
-              geometry: { type: 'Point', coordinates: [26.4731, 53.4515] },
-              properties: {
-                osm_id: 888,
-                osm_type: 'N',
-                osm_key: 'place',
-                osm_value: 'locality',
-                name: 'Мирский Замок',
-                countrycode: 'BY',
-              },
+        JSON.stringify([
+          {
+            place_id: 888,
+            osm_type: 'node',
+            osm_id: 888,
+            lat: '53.4515',
+            lon: '26.4731',
+            name: 'Мирский Замок',
+            display_name: 'Мирский Замок, Мир',
+            category: 'historic',
+            type: 'castle',
+            address: {
+              town: 'Мир',
+              state: 'Гродненская область',
+              country_code: 'by',
             },
-          ],
-        }),
+          },
+        ]),
         { status: 200, headers: { 'Content-Type': 'application/json' } },
       ),
     )

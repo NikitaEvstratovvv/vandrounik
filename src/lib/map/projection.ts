@@ -2,7 +2,7 @@ const TILE_SIZE = 256
 const DEG_TO_RAD = Math.PI / 180
 
 export function clampZoom(zoom: number): number {
-  return Math.min(14, Math.max(5, zoom))
+  return Math.min(16, Math.max(5, zoom))
 }
 
 export function latLngToWorld(lat: number, lng: number, zoom: number): { x: number; y: number } {

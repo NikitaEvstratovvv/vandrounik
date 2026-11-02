@@ -11,7 +11,7 @@
 
 - Slide overlay from E1; `point` selects origin vs destination field focus.
 - Place search via canonical [`searchPlaces`](../../../src/data/places.ts) — see **Контракт поиска мест** in [`docs/DATA-POI.md`](../../DATA-POI.md).
-- Photon + `ROUTE_PLACES`; subtitle `Тип · город, область`; for «Куда» with origin: `… · N км`.
+- Nominatim (`accept-language=ru`) + `ROUTE_PLACES`; subtitle `Тип · город, область`; for «Куда» with origin: `… · N км`.
 - Idle: `/figma/illustration.png`; empty results: `/figma/nothing-found.png`.
 - Writes place into wizard (`setOrigin` / `setDestination`).
 
