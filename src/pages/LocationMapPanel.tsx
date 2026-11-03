@@ -618,7 +618,6 @@ export function LocationMapPanel({
               {enableSearch ? (
                 <Flex
                   as="button"
-                  type="button"
                   position="relative"
                   align="center"
                   h="48px"
