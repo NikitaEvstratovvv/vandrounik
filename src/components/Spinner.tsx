@@ -35,3 +35,38 @@ export function Spinner({ size = 40 }: SpinnerProps) {
     </Box>
   )
 }
+
+/**
+ * Плавное кольцо — для компактных слотов (инпут, чип).
+ * Вращение через SVG animateTransform (надёжнее Chakra css keyframes).
+ */
+export function RingSpinner({ size = 20 }: SpinnerProps) {
+  const stroke = Math.max(1.5, size / 10)
+  const r = (20 - stroke) / 2
+  return (
+    <Box as="span" display="inline-flex" color="muted" w={`${size}px`} h={`${size}px`}>
+      <svg width={size} height={size} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <circle cx="10" cy="10" r={r} stroke="currentColor" strokeWidth={stroke} opacity={0.2} />
+        <g>
+          <circle
+            cx="10"
+            cy="10"
+            r={r}
+            stroke="currentColor"
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={`${Math.PI * r * 0.65} ${Math.PI * r * 2}`}
+          />
+          <animateTransform
+            attributeName="transform"
+            type="rotate"
+            from="0 10 10"
+            to="360 10 10"
+            dur="0.7s"
+            repeatCount="indefinite"
+          />
+        </g>
+      </svg>
+    </Box>
+  )
+}

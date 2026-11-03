@@ -27,6 +27,12 @@ export const router = createBrowserRouter([
         path: 'plan',
         element: <Plan />,
         children: [
+          { path: 'trip' },
+          { path: 'trip/interests' },
+          { path: 'trip/location' },
+          { path: 'walk' },
+          { path: 'walk/interests' },
+          { path: 'walk/location' },
           { path: 'interests' },
           { path: 'location' },
           { path: 'results' },

@@ -1,8 +1,8 @@
 import { Box, Flex } from '@chakra-ui/react'
 
-type Option<T extends string> = { value: T; label: string }
+type Option<T extends string | number> = { value: T; label: string }
 
-type SegmentedProps<T extends string> = {
+type SegmentedProps<T extends string | number> = {
   options: Option<T>[]
   value: T
   onChange: (value: T) => void
@@ -15,7 +15,7 @@ type SegmentedProps<T extends string> = {
  * Segmented control. Контейнер white rounded-card(20) p-4.
  * Активный сегмент: primary fill, rounded-16, shadow. 1:1 с Figma (node 132:290).
  */
-export function Segmented<T extends string>({
+export function Segmented<T extends string | number>({
   options,
   value,
   onChange,

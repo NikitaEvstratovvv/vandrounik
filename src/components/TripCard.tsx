@@ -50,6 +50,7 @@ function MetaDot() {
 /** Карточка сохранённого маршрута на E5. Figma 272:1227 / 304:1925 / 305:2845. */
 export function TripCard({ trip, onSelect }: TripCardProps) {
   const { start, end } = tripEndpoints(trip)
+  const isWalk = trip.params?.intent === 'walk'
   const places = routePlacesCount(trip.variant.stops)
   const status = trip.status ?? 'new'
   const showBadge = status !== 'new'
@@ -111,15 +112,23 @@ export function TripCard({ trip, onSelect }: TripCardProps) {
         </Flex>
 
         <Flex align="center" flexWrap="wrap" gap="4px" w="full">
-          <Text fontSize="xs" fontWeight="medium" lineHeight="xs" color="muted" whiteSpace="nowrap">
-            {start}
-          </Text>
-          <Box color="muted" flexShrink={0} display="inline-flex">
-            <ArrowRightLong size={16} />
-          </Box>
-          <Text fontSize="xs" fontWeight="medium" lineHeight="xs" color="muted" whiteSpace="nowrap">
-            {end}
-          </Text>
+          {isWalk ? (
+            <Text fontSize="xs" fontWeight="medium" lineHeight="xs" color="muted" whiteSpace="nowrap">
+              Пешком · {start}
+            </Text>
+          ) : (
+            <>
+              <Text fontSize="xs" fontWeight="medium" lineHeight="xs" color="muted" whiteSpace="nowrap">
+                {start}
+              </Text>
+              <Box color="muted" flexShrink={0} display="inline-flex">
+                <ArrowRightLong size={16} />
+              </Box>
+              <Text fontSize="xs" fontWeight="medium" lineHeight="xs" color="muted" whiteSpace="nowrap">
+                {end}
+              </Text>
+            </>
+          )}
         </Flex>
       </Flex>
 

@@ -25,7 +25,7 @@ Fonts: `body` Inter, `heading` Oswald. Colors: `primary` / `primaryFg` / `muted`
 - `Screen` + `Header` (`main` logo on E1; `title` on E5).
 - Content column: `px=16`, vertical `gap=16`.
 - Footer CTA sits above TabBar when the hub has a generate/create action.
-- TabBar only on exact `/plan`, `/trips`, `/profile`.
+- TabBar on the plan chooser, exact `/trips`, and exact `/profile`. Trip and walk forms cover it as SlideOverlays.
 
 ## Overlay form
 

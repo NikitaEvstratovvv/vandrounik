@@ -23,6 +23,7 @@ import {
   selectDiverseCandidates,
   selectRoutePlaces,
   shouldBuildFallbackCandidates,
+  WALK_LINK_KM,
   stopSetDistance,
   targetDistanceKm,
   targetAnchorDistanceKm,
@@ -75,6 +76,19 @@ const circularGrodnoState: WizardState = {
     lng: 23.8131,
   },
   interests: ['castles', 'temples', 'estates'],
+}
+
+function maxGapToClusterKm(places: { lat: number; lng: number }[]): number {
+  if (places.length < 2) return 0
+  let maxGap = 0
+  for (let i = 1; i < places.length; i++) {
+    let nearest = Number.POSITIVE_INFINITY
+    for (let j = 0; j < i; j++) {
+      nearest = Math.min(nearest, haversineKm(places[i], places[j]))
+    }
+    maxGap = Math.max(maxGap, nearest)
+  }
+  return maxGap
 }
 
 function averageDistanceFromOrigin(state: WizardState, places: { lat: number; lng: number }[]): number {
@@ -194,6 +208,50 @@ describe('selectRoutePlaces', () => {
   it('uses a more compact circular radius for dense route targets', () => {
     expect(circularRadiusCapRatio(8)).toBeLessThan(circularRadiusCapRatio(5))
     expect(circularRadiusCapRatio(12)).toBeLessThan(circularRadiusCapRatio(8))
+  })
+
+  it('picks a city walk by stop count near the city, ignoring duration', () => {
+    const state: WizardState = {
+      ...circularGrodnoState,
+      intent: 'walk',
+      stopCount: 5,
+      duration: { unit: 'hours', hours: 2, km: null },
+    }
+    const filled = [0, 1, 2, 3, 4, 5].map((seed) => selectRoutePlaces(state, 5, seed))
+    const places = filled.find((selection) => selection.length === 5)
+
+    expect(places).toBeDefined()
+    expect(filled.every((selection) => selection.length === 0 || selection.length === 5)).toBe(true)
+    expect(averageDistanceFromOrigin(state, places!)).toBeLessThan(3)
+    expect(places!.every((place) => place.interests.some((id) => state.interests.includes(id)))).toBe(true)
+    expect(maxGapToClusterKm(places!)).toBeLessThanOrEqual(WALK_LINK_KM)
+  })
+
+  it('does not leave central Minsk for a ring of suburb churches', () => {
+    const state: WizardState = {
+      ...circularGrodnoState,
+      intent: 'walk',
+      stopCount: 8,
+      duration: null,
+      interests: ['temples'],
+      origin: {
+        id: 'origin',
+        title: 'Минск',
+        subtitle: 'Минск',
+        lat: 53.9006,
+        lng: 27.559,
+      },
+      destination: {
+        id: 'destination',
+        title: 'Минск',
+        subtitle: 'Минск',
+        lat: 53.9006,
+        lng: 27.559,
+      },
+    }
+    const places = selectRoutePlaces(state, 8, 0)
+
+    expect(places).toHaveLength(0)
   })
 
   it('selects farther circular anchors for long targets than short targets', () => {
@@ -567,6 +625,41 @@ describe('generateRoutes target fitting', () => {
     const bestKm = Math.max(...result.variants.map((variant) => variant.totalKm))
 
     expect(bestKm).toBeGreaterThanOrEqual(680)
+  }, 15_000)
+})
+
+describe('generateRoutes walk', () => {
+  beforeEach(() => {
+    vi.mocked(planTrip).mockReset()
+    vi.mocked(planTrip).mockImplementation(async (waypoints, options) => {
+      expect(options?.roundtrip).toBe(false)
+      return mockTripForWaypoints(waypoints)
+    })
+  })
+
+  it('starts in the city and finishes at the last place', async () => {
+    const state: WizardState = {
+      ...circularGrodnoState,
+      intent: 'walk',
+      stopCount: 5,
+      duration: null,
+    }
+
+    const result = await generateRoutes(state)
+
+    expect(result.params.circular).toBe(false)
+    expect(result.variants.length).toBeGreaterThan(0)
+    for (const variant of result.variants) {
+      const places = variant.stops.filter(
+        (stop) => stop.placeId !== 'origin' && stop.placeId !== 'destination',
+      )
+      const last = variant.stops[variant.stops.length - 1]
+      expect(places).toHaveLength(5)
+      expect(variant.stops[0]?.placeId).toBe('origin')
+      expect(last?.placeId).not.toBe('origin')
+      expect(last?.placeId).not.toBe('destination')
+      expect(variant.stops.some((stop) => stop.placeId === 'destination')).toBe(false)
+    }
   })
 })
 

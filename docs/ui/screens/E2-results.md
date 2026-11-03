@@ -14,6 +14,7 @@
 - Map frost bars: `mapFrostedGradientLayer` (nodes `215:908` / `215:913`).
 - Card click or footer «Выбрать» → `RouteDetailsSheet` preview (Yandex/Google chips + «Сохранить»).
 - «Сохранить» → `saveTrip` + E4 `/plan/results/saved?id=…`.
+- Back → форма по `wizard.intent` (`/plan/trip` или `/plan/walk`), не chooser `/plan`. Форма держится под results, чтобы не мелькал E1.
 
 ## Components
 

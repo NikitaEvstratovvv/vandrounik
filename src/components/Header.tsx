@@ -1,15 +1,16 @@
 import { Box, Flex, Image, Text } from '@chakra-ui/react'
+import type { ReactNode } from 'react'
 import { ChevronLeft } from '@/components/icons'
 
 type HeaderProps =
   | { variant: 'main' }
-  | { variant: 'title'; title: string }
-  | { variant: 'back'; title: string; onBack: () => void }
+  | { variant: 'title'; title: string; endAction?: ReactNode }
+  | { variant: 'back'; title: string; onBack: () => void; endAction?: ReactNode }
 
 /**
  * Шапка экрана.
  * main — логотип-надпись (240×48), title — Oswald uppercase без назад,
- * back — стрелка + заголовок Oswald uppercase.
+ * back — стрелка + заголовок Oswald uppercase (+ optional endAction).
  * Высота 80px, px-16 py-20 (1:1 с Figma node 126:129 / 145:443 / 272:1206).
  */
 export function Header(props: HeaderProps) {
@@ -37,6 +38,7 @@ export function Header(props: HeaderProps) {
         >
           {props.title}
         </Text>
+        {props.endAction}
       </Flex>
     )
   }
@@ -69,6 +71,7 @@ export function Header(props: HeaderProps) {
       >
         {props.title}
       </Text>
+      {props.endAction}
     </Flex>
   )
 }

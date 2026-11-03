@@ -1,9 +1,13 @@
+import { ROUTE_PLACES } from '@/data/routePlaces'
 import { haversineKm } from '@/lib/geo/distance'
 import {
   isStrongPoiMatch,
   searchRoutePlacesLocal,
 } from '@/lib/geocoding/routePlacesSearch'
-import { searchPlaces as searchNominatim } from '@/lib/geocoding/nominatim'
+import {
+  reverseGeocode,
+  searchPlaces as searchNominatim,
+} from '@/lib/geocoding/nominatim'
 import type { LatLng, Place } from '@/types'
 
 const RESULT_LIMIT = 8
@@ -62,4 +66,34 @@ export async function searchPlaces(
   for (const place of weakPois) push(place)
 
   return out.slice(0, RESULT_LIMIT)
+}
+
+/**
+ * Resolve a map tap / geolocation fix to a Place.
+ * Prefers a nearby catalog POI (~200 m), otherwise Nominatim reverse.
+ * See docs/DATA-POI.md «Контракт поиска мест».
+ */
+export async function resolvePlaceAt(
+  point: LatLng,
+  options: { signal?: AbortSignal } = {},
+): Promise<Place | null> {
+  let nearest: Place | null = null
+  let nearestKm = DEDUPE_KM
+
+  for (const place of ROUTE_PLACES) {
+    const km = haversineKm(point, place)
+    if (km < nearestKm) {
+      nearestKm = km
+      nearest = {
+        id: `poi:${place.id}`,
+        title: place.name,
+        subtitle: place.type,
+        lat: place.lat,
+        lng: place.lng,
+      }
+    }
+  }
+
+  if (nearest) return nearest
+  return reverseGeocode(point, options)
 }

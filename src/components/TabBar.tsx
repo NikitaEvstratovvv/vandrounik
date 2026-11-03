@@ -21,16 +21,21 @@ const TABS: TabDef[] = [
  */
 export const TAB_BAR_HEIGHT = 80
 
+const CHROME_FADE = 'opacity 280ms cubic-bezier(0.4, 0, 0.2, 1)'
+
 /**
  * Нижний tab bar — Figma 271:1300 / 271:1255.
  * Только на корневых табах (/plan, /trips, /profile).
  * Позиционируется поверх контента (frost), контент скроллится под ним.
+ * Скрытие — opacity 280ms, узел остаётся смонтированным.
  */
-export function TabBar() {
+export function TabBar({ visible = true }: { visible?: boolean }) {
   return (
     <Box
       as="nav"
       aria-label="Основное меню"
+      aria-hidden={visible ? undefined : true}
+      inert={visible ? undefined : true}
       position="absolute"
       left={0}
       right={0}
@@ -38,7 +43,9 @@ export function TabBar() {
       zIndex={12}
       p="8px"
       w="full"
+      opacity={visible ? 1 : 0}
       pointerEvents="none"
+      transition={CHROME_FADE}
     >
       <Flex
         gap="4px"
@@ -48,7 +55,7 @@ export function TabBar() {
         borderRadius="tab"
         boxShadow="tab"
         overflow="hidden"
-        pointerEvents="auto"
+        pointerEvents={visible ? 'auto' : 'none'}
         style={{
           background: 'rgba(255, 255, 255, 0.8)',
           backdropFilter: 'blur(8px)',

@@ -3,18 +3,20 @@
 | | |
 |--|--|
 | Status | `implemented` |
-| Code | [`src/pages/Location.tsx`](../../../src/pages/Location.tsx) (`LocationPanel`) |
+| Code | [`src/pages/Location.tsx`](../../../src/pages/Location.tsx) → [`LocationMapPanel`](../../../src/pages/LocationMapPanel.tsx) |
 | Route | `/plan/location?point=origin\|destination` |
-| Figma | [`138:330`](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=138-330) / [`142:545`](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=142-545) |
+| Figma | composed (map-first); legacy list nodes `138:330` / `142:545` |
 
 ## Behavior
 
-- Slide overlay from E1; `point` selects origin vs destination field focus.
-- Place search via canonical [`searchPlaces`](../../../src/data/places.ts) — see **Контракт поиска мест** in [`docs/DATA-POI.md`](../../DATA-POI.md).
-- Nominatim (`accept-language=ru`) + `ROUTE_PLACES`; subtitle `Тип · город, область`; for «Куда» with origin: `… · N км`.
-- Idle: `/figma/illustration.png`; empty results: `/figma/nothing-found.png`.
+- Slide overlay from E1; `point` selects origin vs destination (walk «Город» = origin + title override).
+- Map-first: frosted back header + full-bleed map; bottom card — search field + «Выбрать».
+- Tap search → fullHeight `BottomSheet` (`dragToDismiss`) with [`searchPlaces`](../../../src/data/places.ts); pick result → pin on map, confirm with «Выбрать».
+- Tap map → [`resolvePlaceAt`](../../../src/data/places.ts); loader — `RingSpinner` in the field.
+- «Куда» with origin: search biased `near` + subtitle `… · N км`.
+- Idle / nothing: `/figma/illustration.png` / `nothing-found.png` inside the sheet.
 - Writes place into wizard (`setOrigin` / `setDestination`).
 
 ## Components
 
-- `Header` back, search field (`pill` radius), result list, `EmblemLoader` where applicable
+- `LocationPanel` thin wrapper; `LocationMapPanel` `enableSearch` + `BottomSheet` search

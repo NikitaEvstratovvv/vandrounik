@@ -2,10 +2,16 @@ import { haversineKm } from '@/lib/geo/distance'
 import type { LatLng, Place } from '@/types'
 
 const SEARCH_ENDPOINT = '/api/nominatim/search'
+const REVERSE_ENDPOINT = '/api/nominatim/reverse'
 const MIN_QUERY_LENGTH = 3
 const MIN_REQUEST_INTERVAL_MS = 1100
 const FETCH_LIMIT = 20
 const RESULT_LIMIT = 8
+
+/** Rough Belarus bbox — used when reverse omits country_code. */
+function inBelarus(lat: number, lng: number): boolean {
+  return lat >= 51.2 && lat <= 56.2 && lng >= 23.15 && lng <= 32.85
+}
 
 /** Drop shops/cafes/services; keep places, streets, addresses, waterways, stations. */
 const BLOCKED_CATEGORIES = new Set(['shop', 'craft', 'amenity'])
@@ -235,15 +241,20 @@ function buildTitle(result: NominatimResult): string {
   )
 }
 
-function mapResult(result: NominatimResult, query: string): RankedPlace | null {
+function mapResult(
+  result: NominatimResult,
+  query: string,
+  options: { requireBelarus?: boolean } = {},
+): RankedPlace | null {
   if (isBlocked(result)) return null
-
-  const country = result.address?.country_code?.trim().toLowerCase()
-  if (country && country !== 'by') return null
 
   const lat = Number(result.lat)
   const lng = Number(result.lon)
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+
+  const country = result.address?.country_code?.trim().toLowerCase()
+  if (country && country !== 'by') return null
+  if (options.requireBelarus && !country && !inBelarus(lat, lng)) return null
 
   const title = buildTitle(result)
   if (!title) return null
@@ -367,6 +378,105 @@ export async function searchPlaces(
     const places = stripRank(ranked)
     cache.set(cacheKey, places)
     return places
+  }, options.signal)
+}
+
+/**
+ * When reverse lands on a shop/cafe/amenity (blocked for search), still salvage a
+ * usable Place from the address payload — map pick needs a street/settlement, not null.
+ */
+function placeFromReverseHit(result: NominatimResult, point: LatLng): Place | null {
+  const country = result.address?.country_code?.trim().toLowerCase()
+  if (country && country !== 'by') return null
+  if (!country && !inBelarus(point.lat, point.lng)) return null
+
+  const ranked = mapResult(result, '', { requireBelarus: true })
+  if (ranked) {
+    return {
+      id: ranked.id,
+      title: ranked.title,
+      subtitle: ranked.subtitle,
+      lat: point.lat,
+      lng: point.lng,
+    }
+  }
+
+  // Blocked category (amenity/shop/…) — prefer street address from the same hit.
+  const road = roadName(result.address)
+  const house = result.address?.house_number?.trim()
+  const settlement = settlementName(result.address)
+  const title = road
+    ? house
+      ? `${road}, ${house}`
+      : road
+    : settlement || result.address?.state?.trim() || ''
+  if (!title) return null
+
+  const osmType = result.osm_type ?? 'node'
+  const osmId = result.osm_id ?? result.place_id
+  const subtitleParts: string[] = []
+  if (settlement && settlement !== title) subtitleParts.push(settlement)
+  const state = result.address?.state?.trim()
+  if (state && state !== title && state !== settlement) subtitleParts.push(state)
+
+  return {
+    id: `osm:${osmType}:${osmId}`,
+    title,
+    subtitle: subtitleParts.join(', '),
+    lat: point.lat,
+    lng: point.lng,
+  }
+}
+
+/**
+ * Reverse geocode a map tap to a Place (Belarus only).
+ * Shares the Nominatim rate limit with search.
+ */
+export async function reverseGeocode(
+  point: LatLng,
+  options: { signal?: AbortSignal } = {},
+): Promise<Place | null> {
+  if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) return null
+  if (!inBelarus(point.lat, point.lng)) return null
+
+  throwIfAborted(options.signal)
+
+  const cacheKey = `rev:${point.lat.toFixed(5)},${point.lng.toFixed(5)}`
+  const cached = cache.get(cacheKey)
+  if (cached) return cached[0] ?? null
+
+  return runRateLimited(async () => {
+    const params = new URLSearchParams({
+      lat: String(point.lat),
+      lon: String(point.lng),
+      format: 'jsonv2',
+      addressdetails: '1',
+      'accept-language': 'ru',
+      // Street/building level — amenities still appear; placeFromReverseHit salvages address.
+      zoom: '18',
+    })
+
+    const response = await fetch(`${REVERSE_ENDPOINT}?${params.toString()}`, {
+      signal: options.signal,
+    })
+    if (!response.ok) {
+      throw new Error('Не удалось определить место')
+    }
+
+    const data = (await response.json()) as NominatimResult | { error?: string }
+    if (!data || typeof data !== 'object' || 'error' in data) {
+      cache.set(cacheKey, [])
+      return null
+    }
+
+    const place = placeFromReverseHit(data as NominatimResult, point)
+    if (!place) {
+      cache.set(cacheKey, [])
+      return null
+    }
+
+    cache.set(cacheKey, [place])
+    return place
   }, options.signal)
 }
 

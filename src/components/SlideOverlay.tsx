@@ -52,13 +52,17 @@ export function SlideOverlay({
 
       setVisible(false)
       setMotionReady(false)
-      const frame = requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
+      let inner = 0
+      const outer = requestAnimationFrame(() => {
+        inner = requestAnimationFrame(() => {
           setMotionReady(true)
           setVisible(true)
         })
       })
-      return () => cancelAnimationFrame(frame)
+      return () => {
+        cancelAnimationFrame(outer)
+        cancelAnimationFrame(inner)
+      }
     }
 
     setMotionReady(true)

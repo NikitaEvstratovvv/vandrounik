@@ -29,13 +29,12 @@ function TabShellLayout() {
   const { pathname } = useLocation()
   const { forceHidden } = useTabChrome()
   const onRootTab = ROOT_TABS.has(pathname)
-  const showTabBar = onRootTab && !forceHidden
 
   return (
     <Screen>
       <Box flex="1" minH="0" display="flex" flexDirection="column" position="relative" overflow="hidden">
         <Outlet />
-        {showTabBar ? <TabBar /> : null}
+        {onRootTab ? <TabBar visible={!forceHidden} /> : null}
       </Box>
     </Screen>
   )

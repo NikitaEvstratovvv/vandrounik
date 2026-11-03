@@ -32,13 +32,15 @@ Profile section overview: [`304:2279`](https://www.figma.com/design/mAysLALLcMDA
 | A1 change email | composed | — | `src/pages/Auth.tsx` | — |
 | E0 Splash | retired | `120:361` | — (replaced by A0) | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=120-361) |
 | E1 Plan | implemented | `137:204` | `src/pages/Plan.tsx` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=137-204) |
+| E1 choice + walk | composed | — | `src/pages/Plan.tsx` | — |
 | E5 Trips | implemented | empty `272:1124` / list `272:1309` / cards `304:1924` / section `272:1021` | `src/pages/Trips.tsx` + `TripCard` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=272-1021) |
 | E8 Profile | implemented | `308:2061` | `src/pages/Profile.tsx` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=308-2061) |
 | Profile settings | implemented | `350:2045` / filled `351:2148` | `src/pages/ProfileSettings.tsx` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=351-2148) |
 | Profile photo | implemented | `351:2207` / `351:2310` | `src/pages/ProfilePhoto.tsx` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=351-2207) |
 | Profile name | implemented | `350:2088` / success `350:2114` | `src/pages/ProfileName.tsx` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=350-2088) |
 | Profile email | implemented | `332:1568` / code `332:1642` / done `332:1673` | `src/pages/ProfileEmail.tsx` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=332-1568) |
-| S1 Location | implemented | `138:330` / `142:545` | `src/pages/Location.tsx` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=138-330) |
+| S1 Location | composed | — | `Location.tsx` → `LocationMapPanel` `enableSearch` | — |
+| S1 map+search | composed | — | `src/pages/LocationMapPanel.tsx` | — |
 | S2 Interests | implemented | `147:667` | `src/pages/Interests.tsx` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=147-667) |
 | BS1 Duration | implemented | `148:447` | `src/components/DurationSheet.tsx` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=148-447) |
 | L1 Loading | implemented | `149:838` | `src/pages/Loading.tsx` | [open](https://www.figma.com/design/mAysLALLcMDA07FqvFno5B/Vandrounik-design?node-id=149-838) |

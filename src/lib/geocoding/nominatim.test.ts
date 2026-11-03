@@ -3,6 +3,7 @@ import {
   clearNominatimCache,
   mapNominatimResults,
   objectTypeLabel,
+  reverseGeocode,
   searchPlaces,
 } from '@/lib/geocoding/nominatim'
 
@@ -382,5 +383,92 @@ describe('searchPlaces (Nominatim)', () => {
     const places = await searchPlaces('Ми')
     expect(places).toEqual([])
     expect(fetch).not.toHaveBeenCalled()
+  })
+})
+
+describe('reverseGeocode', () => {
+  beforeEach(() => {
+    clearNominatimCache()
+    vi.stubGlobal('fetch', vi.fn())
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    clearNominatimCache()
+  })
+
+  it('maps a reverse hit and keeps the tapped coordinates', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          place_id: 9,
+          osm_type: 'way',
+          osm_id: 100,
+          lat: '53.9000',
+          lon: '27.5600',
+          name: 'улица Суворова',
+          display_name: 'улица Суворова, Минск, Беларусь',
+          category: 'highway',
+          type: 'residential',
+          addresstype: 'road',
+          address: {
+            road: 'улица Суворова',
+            city: 'Минск',
+            state: 'Минская область',
+            country_code: 'by',
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+
+    const place = await reverseGeocode({ lat: 53.901, lng: 27.561 })
+    expect(fetch).toHaveBeenCalledTimes(1)
+    const url = String(vi.mocked(fetch).mock.calls[0]?.[0])
+    expect(url).toContain('/api/nominatim/reverse?')
+    expect(url).toContain('lat=53.901')
+    expect(place?.title).toBe('улица Суворова')
+    expect(place?.lat).toBe(53.901)
+    expect(place?.lng).toBe(27.561)
+  })
+
+  it('returns null outside Belarus without fetching', async () => {
+    const place = await reverseGeocode({ lat: 52.52, lng: 13.4 })
+    expect(place).toBeNull()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('salvages street address when reverse hits a blocked amenity', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          place_id: 179182864,
+          osm_type: 'node',
+          osm_id: 2653872413,
+          lat: '53.6767674',
+          lon: '23.8302147',
+          category: 'amenity',
+          type: 'restaurant',
+          name: 'Неман',
+          display_name:
+            'Неман, 8, улица Стефана Батория, Гродно, Гродненская область, Беларусь',
+          address: {
+            amenity: 'Неман',
+            house_number: '8',
+            road: 'улица Стефана Батория',
+            city: 'Гродно',
+            state: 'Гродненская область',
+            country_code: 'by',
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+
+    const place = await reverseGeocode({ lat: 53.677, lng: 23.83 })
+    expect(place?.title).toBe('улица Стефана Батория, 8')
+    expect(place?.subtitle).toContain('Гродно')
+    expect(place?.lat).toBe(53.677)
+    expect(place?.lng).toBe(23.83)
   })
 })

@@ -11,6 +11,7 @@ A0 Auth email (/)
   → A1 Auth code (/auth/code)  ← «Изменить почту» back to A0 (pending prefilled)
       → TabShell (RequireAuth)
           ├── E1 Создать (/plan)          + TabBar
+          │     выбор → поездка / прогулка как SlideOverlay
           ├── E5 Trips (/trips)           + TabBar
           │     └── E6 trip route  SlideOverlay  /trips/:tripId
           └── E8 Profile (/profile)       + TabBar
@@ -18,9 +19,11 @@ A0 Auth email (/)
                 ├── Photo      SlideOverlay  /profile/settings/photo  (zIndex 16)
                 ├── Name       SlideOverlay  /profile/settings/name   (zIndex 16)
                 └── Email      SlideOverlay  /profile/settings/email… (zIndex 16; code/done = content fade)
-                E1 overlays (no TabBar):
-                ├── S1  Location     SlideOverlay  /plan/location?point=origin|destination
-                ├── S2  Interests    SlideOverlay  /plan/interests
+                E1 overlays:
+                ├── Trip form   SlideOverlay  /plan/trip
+                ├── Walk form   SlideOverlay  /plan/walk
+                ├── S1  Location     SlideOverlay  /plan/{trip|walk}/location?point=… (zIndex 16; legacy /plan/location)
+                ├── S2  Interests    SlideOverlay  /plan/{trip|walk}/interests (zIndex 16; legacy /plan/interests)
                 ├── BS1 Duration     BottomSheet   local state (no URL)
                 └── L1  Loading      full page     /plan/loading  (вне TabShell)
                       → E2 Results   SlideOverlay  /plan/results
@@ -46,9 +49,15 @@ Google (mock) с любого auth-экрана → /plan
 |------|---------|-------|
 | `/` | `AuthEmailPage` | Entry; email error under field (Figma 320:1734); prefill from pending |
 | `/auth/code` | `AuthCodePage` | Needs pending email; «Изменить почту» → `/`; then session → `/plan` |
-| `/plan` | `Plan` inside `TabShell` + `RequireAuth` | Hub + TabBar |
-| `/plan/interests` | child of Plan | Opens interests overlay; no TabBar |
-| `/plan/location` | child of Plan | Query `?point=origin\|destination` |
+| `/plan` | `Plan` inside `TabShell` + `RequireAuth` | Chooser + TabBar |
+| `/plan/trip` | child of Plan | Trip form SlideOverlay |
+| `/plan/trip/interests` | child of Plan | Interests over trip; zIndex 16 |
+| `/plan/trip/location` | child of Plan | Location over trip; `?point=` |
+| `/plan/walk` | child of Plan | Walk form SlideOverlay |
+| `/plan/walk/interests` | child of Plan | Interests over walk; zIndex 16 |
+| `/plan/walk/location` | child of Plan | Location over walk; `?point=` |
+| `/plan/interests` | child of Plan | Legacy interests overlay |
+| `/plan/location` | child of Plan | Legacy location; `?point=origin\|destination` |
 | `/plan/results` | child of Plan | Results overlay |
 | `/plan/results/saved` | child of Plan | Route saved success (`?id=`); zIndex 16 |
 | `/plan/results/:variantId` | child of Plan | Route detail overlay (zIndex 16; deep-link) |
@@ -71,12 +80,14 @@ Child routes under `/plan` and `/profile` have **no separate page elements** —
 1. User action sets local `*Open` state → `SlideOverlay` mounts / animates in.
 2. `onEntered` → `navigate(..., { replace: true })` to the matching URL (if not already there).
 3. Close → set `*Open` false → on exit animation `onExited` → navigate back to hub (or previous stack level).
-4. Hub (`Plan` / `Profile`) calls `useTabChrome().setForceHidden(panelOpen)` so TabBar hides while any panel/sheet is open.
+4. Hub (`Plan` / `Profile`) calls `useTabChrome().setForceHidden(...)` so TabBar hides while nested panels/sheets are open. Trip and walk forms cover the bar as opaque overlays (no extra `forceHidden`).
 
 | Overlay | Component | Animate enter |
 |---------|-----------|---------------|
-| Interests | `InterestsPanel` | yes |
-| Location | `LocationPanel` | yes |
+| Trip form | fields in `Plan` | yes |
+| Walk form | fields in `Plan` | yes |
+| Interests | `InterestsPanel` | yes; `zIndex={16}` over form |
+| Location | `LocationPanel` | yes; `zIndex={16}` over form |
 | Results | `ResultsPanel` | no (`animateEnter={false}`) |
 | Route saved | `RouteSavedPanel` | yes; `zIndex={16}` |
 | Route detail | `RouteDetailPanel` | no; `zIndex={16}` |

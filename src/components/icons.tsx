@@ -54,6 +54,21 @@ export function CheckIcon({ size = 15, strokeWidth = 2 }: IconProps) {
 }
 
 /** remix/search — иконка в поле поиска (24px). */
+/** Map pin — S1 «выбрать на карте» (composed). */
+export function MapPinIcon({ size = 20, strokeWidth = 2 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M12 21s-6-5.33-6-10a6 6 0 1 1 12 0c0 4.67-6 10-6 10Z"
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="11" r="2.25" stroke="currentColor" strokeWidth={strokeWidth} />
+    </svg>
+  )
+}
+
 export function SearchIcon({ size = 24, strokeWidth = 2 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">

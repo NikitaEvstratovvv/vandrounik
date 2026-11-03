@@ -57,9 +57,10 @@ describe('routeStops helpers', () => {
     expect(isRoutePlaceStop(stops[3])).toBe(false)
   })
 
-  it('labels endpoints as start and finish, and POI by order', () => {
+  it('labels endpoints as start and finish, and POI from 1 skipping start', () => {
     expect(routeStopLabel(stops[0])).toBe('Старт')
-    expect(routeStopLabel(stops[1])).toBe('2')
+    expect(routeStopLabel(stops[1])).toBe('1')
+    expect(routeStopLabel(stops[2])).toBe('2')
     expect(routeStopLabel(stops[3])).toBe('Финиш')
   })
 

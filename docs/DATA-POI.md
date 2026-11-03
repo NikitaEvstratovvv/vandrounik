@@ -67,19 +67,20 @@ npm run enrich:place-images
 
 Единые правила для любого UI, где пользователь ищет точку на карте Беларуси (S1 «Откуда»/«Куда», будущие каталог / тап на карте / геолокация).
 
-**Публичный API для страниц:** только [`searchPlaces`](../src/data/places.ts) из `@/data/places`. Не вызывать `@/lib/geocoding/nominatim` или `routePlacesSearch` напрямую из UI. Reverse geocode (карта, «моё местоположение») должен возвращать тот же тип [`Place`](../src/types/index.ts) и те же правила подписи.
+**Публичный API для страниц:** [`searchPlaces`](../src/data/places.ts) и [`resolvePlaceAt`](../src/data/places.ts) из `@/data/places`. Не вызывать `@/lib/geocoding/nominatim` или `routePlacesSearch` напрямую из UI. Reverse (карта, «моё местоположение») возвращает тот же тип [`Place`](../src/types/index.ts).
 
 | Правило | Детали |
 |---|---|
 | Вход | Строка ≥3 символов; для «Куда» опционально `near` (viewbox bias + расстояние в UI) |
 | Источники | Nominatim (`/api/nominatim/search`, `countrycodes=by`) + локальный `ROUTE_PLACES` |
 | Язык | `accept-language=ru` — русские подписи из `name:ru` / локализованного `address` |
-| Фильтр | без `shop` / `craft` / `amenity`; здания и улицы с адресом остаются |
+| Фильтр (search) | без `shop` / `craft` / `amenity`; здания и улицы с адресом остаются |
+| Reverse | если hit — amenity/shop, берём улицу/номер из `address`, иначе null |
 | Ранг | Населённые пункты выше улиц; сильные совпадения POI сверху |
 | Дедуп | По `title\|subtitle` и близости ~200 м |
 | Подсказка | `title` + `subtitle`: `Тип · город, область` (тип только если уверенный: Город, Улица, Река…); POI — тип из каталога; для «Куда» UI добавляет `· N км` |
 
-Сейчас контракт использует только S1 ([`Location.tsx`](../src/pages/Location.tsx)).
+S1: [`Location.tsx`](../src/pages/Location.tsx) → [`LocationMapPanel`](../src/pages/LocationMapPanel.tsx) — sheet `searchPlaces`, map tap `resolvePlaceAt` (POI ~200 m, else Nominatim reverse).
 
 ## Построение маршрута
 

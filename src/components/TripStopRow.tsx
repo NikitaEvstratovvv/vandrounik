@@ -18,10 +18,9 @@ type TripStopRowProps = {
   onToggleVisited?: () => void
 }
 
-/** Filled (primary) badge — Figma 306:1601 stepper. */
+/** Filled (primary) badge — Figma 306:1601 stepper. Start/finish share secondary. */
 export function tripStopBadgeActive(stop: RouteStop, visited: boolean): boolean {
-  if (stop.placeId === 'origin') return true
-  if (stop.placeId === 'destination') return false
+  if (stop.placeId === 'origin' || stop.placeId === 'destination') return false
   return isRoutePlaceStop(stop) && visited
 }
 

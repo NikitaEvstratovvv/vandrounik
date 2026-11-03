@@ -30,5 +30,6 @@ export function routePlacesCount(stops: RouteStop[]): number {
 export function routeStopLabel(stop: RouteStop): string {
   if (stop.placeId === 'origin') return 'Старт'
   if (stop.placeId === 'destination') return 'Финиш'
-  return String(stop.order)
+  // Start is always order 1 (flag, unnumbered); landmarks count from 1.
+  return String(stop.order - 1)
 }

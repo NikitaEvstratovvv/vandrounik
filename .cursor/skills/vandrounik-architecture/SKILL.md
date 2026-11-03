@@ -28,9 +28,11 @@ A0 Auth email (/)
                 ├── Photo     SlideOverlay  /profile/settings/photo
                 ├── Name      SlideOverlay  /profile/settings/name
                 └── Email     SlideOverlay  /profile/settings/email…
-                E1 overlays (no TabBar):
-                ├── S1 Location     SlideOverlay  /plan/location?point=origin|destination
-                ├── S2 Interests    SlideOverlay  /plan/interests
+                E1 overlays:
+                ├── Trip form  SlideOverlay  /plan/trip
+                ├── Walk form  SlideOverlay  /plan/walk
+                ├── S1 Location     SlideOverlay  /plan/{trip|walk}/location?point=…
+                ├── S2 Interests    SlideOverlay  /plan/{trip|walk}/interests
                 ├── BS1 Duration    BottomSheet   local state (no URL)
                 └── L1 Loading      /plan/loading   (outside TabShell)
                       → E2 Results  /plan/results
@@ -41,7 +43,7 @@ A0 Auth email (/)
 
 Auth is mock (`src/lib/storage/auth.ts`). Session includes `displayName` + `avatar` (preset id or custom `/media/avatars/…` url). Email errors: red text under field (Figma `320:1734`), no tooltip. Authenticated app uses `RequireAuth` + `TabShell`. Profile settings are SlideOverlays hosted by `Profile.tsx` (same URL-sync pattern as Plan; no TabBar while open); edits use `updateSession`. Motion: skill `vandrounik-motion`.
 
-**TabBar** (Figma `271:1300`): only on exact `/plan`, `/trips`, `/profile`. Hidden on overlay URLs, `/trips/:tripId`, `/profile/*` nested routes, when Plan/Profile/Trips `setForceHidden(true)`, and on `/plan/loading` / auth.
+**TabBar** (Figma `271:1300`): only on the plan chooser (`/plan`), `/trips`, and `/profile`. Trip and walk forms cover it as opaque SlideOverlays. Hidden on nested overlay URLs, `/trips/:tripId`, `/profile/*`, when Plan/Profile/Trips `setForceHidden(true)`, and on `/plan/loading` / auth.
 
 Screen docs: [docs/ui/screens/](../../../docs/ui/screens/).
 
@@ -58,7 +60,7 @@ Do **not** add a top-level page for a panel that should stack over Plan/Profile 
 
 | Pattern | Use |
 |---------|-----|
-| `SlideOverlay` | Full-screen stack (S1, S2, E2, E4 saved, E3 deep-link, E6 trip route, profile settings) |
+| `SlideOverlay` | Full-screen stack (trip/walk forms, S1, S2, E2, E4 saved, E3 deep-link, E6 trip route, profile settings) |
 | `BottomSheet` | Transient sheet (BS1 Duration, E6 manage/confirm) |
 | Full route | Auth (A0–A1), TabShell tabs, Loading |
 
@@ -75,7 +77,7 @@ Do **not** add a top-level page for a panel that should stack over Plan/Profile 
 | Visited | `src/lib/storage/visited.ts` | global places for Profile; also updated on trip mark |
 | Avatar helpers | `src/lib/profile/avatar.ts` | presets + resize |
 
-CTA «Подобрать маршрут» needs origin + destination (coords) + ≥1 interest. Duration optional.
+CTA «Подобрать маршрут» for a trip needs origin + destination (coords) + ≥1 interest. Duration optional. A walk needs a city + ≥1 interest; stop count is 3, 5, or 8 (default 5), and duration is not asked.
 
 ## Adding a screen checklist
 

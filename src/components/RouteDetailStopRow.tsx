@@ -57,22 +57,18 @@ export function RouteDetailStopRow({
         align="center"
         justifyContent="center"
         bg={
-          stop.placeId === 'origin'
-            ? 'primary'
-            : stop.placeId === 'destination'
-              ? 'secondary'
-              : visited
-                ? 'primary'
-                : 'secondary'
+          stop.placeId === 'origin' || stop.placeId === 'destination'
+            ? 'secondary'
+            : visited
+              ? 'primary'
+              : 'secondary'
         }
         color={
-          stop.placeId === 'origin'
-            ? 'primaryFg'
-            : stop.placeId === 'destination'
-              ? 'primary'
-              : visited
-                ? 'primaryFg'
-                : 'primary'
+          stop.placeId === 'origin' || stop.placeId === 'destination'
+            ? 'primary'
+            : visited
+              ? 'primaryFg'
+              : 'primary'
         }
         borderRadius="12px"
         transition="background 150ms, color 150ms"

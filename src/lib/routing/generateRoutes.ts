@@ -4,16 +4,17 @@ import { ROUTE_PLACES } from '@/data/routePlaces'
 import { distanceToSegmentKm, bearingDeg, haversineKm, segmentProjection } from '@/lib/geo/distance'
 import { fetchDirectRouteKm } from '@/lib/routing/directRouteKm'
 import { planRoute, planTrip } from '@/lib/routing/osrm'
-import { hoursToKm } from '@/lib/transport/speed'
-import type {
-  GenerationParams,
-  GenerationResult,
-  InterestId,
-  LatLng,
-  RoutePlace,
-  RouteStop,
-  RouteVariant,
-  WizardState,
+import { hoursToKm, WALK_SPEED_KMH } from '@/lib/transport/speed'
+import {
+  walkStopCount,
+  type GenerationParams,
+  type GenerationResult,
+  type InterestId,
+  type LatLng,
+  type RoutePlace,
+  type RouteStop,
+  type RouteVariant,
+  type WizardState,
 } from '@/types'
 
 export const MIN_ROUTE_VARIANTS = 3
@@ -23,6 +24,10 @@ const ENDPOINT_DEDUPE_KM = 0.3
 const PROJECTION_MARGIN = 0.08
 const MAX_POI_PER_ROUTE = 12
 const MIN_POI_SPACING_KM = 16
+/** Следующая точка прогулки не дальше этого перехода от уже выбранных. */
+export const WALK_LINK_KM = 0.6
+const WALK_SEED_RADIUS_KM = 2
+const WALK_CANDIDATE_SEEDS = [0, 1, 2, 3, 4, 5] as const
 const CANDIDATE_SEEDS = [0, 1, 2] as const
 const LONG_TARGET_SEEDS = [0, 1, 2] as const
 const EMERGENCY_DIVERSE_SEEDS = [3, 4, 5] as const
@@ -94,12 +99,14 @@ function buildParams(state: WizardState): GenerationParams {
     destinationTitle: destination?.title ?? origin?.title ?? '—',
     destinationLat: destination?.lat ?? null,
     destinationLng: destination?.lng ?? null,
-    circular: isCircular(state),
+    circular: state.intent === 'walk' ? false : isCircular(state),
+    intent: state.intent === 'walk' ? 'walk' : 'trip',
     transport: state.transport,
     durationUnit: state.duration?.unit ?? null,
     durationHours: state.duration?.hours ?? null,
     durationKm: state.duration?.km ?? null,
     interests: [...state.interests],
+    ...(state.intent === 'walk' ? { stopCount: walkStopCount(state.stopCount) } : {}),
   }
 }
 
@@ -116,6 +123,7 @@ export function getRouteTarget(state: WizardState): RouteTarget | null {
 }
 
 export async function resolveRouteTarget(state: WizardState): Promise<RouteTarget | null> {
+  if (state.intent === 'walk') return null
   const explicit = getRouteTarget(state)
   if (explicit) return explicit
 
@@ -157,7 +165,7 @@ export function directRouteDistanceKm(state: WizardState): number | null {
 
 export function resolveCorridorKm(state: WizardState, target: RouteTarget | null): number {
   const directKm = directRouteDistanceKm(state)
-  const targetKm = targetDistanceKm(target, state.transport)
+  const targetKm = targetDistanceKm(target, state.transport, state.intent)
   if (directKm === null || targetKm === null || directKm <= 1) return CORRIDOR_KM
 
   const ratio = targetKm / directKm
@@ -167,8 +175,15 @@ export function resolveCorridorKm(state: WizardState, target: RouteTarget | null
   return CORRIDOR_KM
 }
 
-export function targetDistanceKm(target: RouteTarget | null, transport: WizardState['transport'] = 'car'): number | null {
+export function targetDistanceKm(
+  target: RouteTarget | null,
+  transport: WizardState['transport'] = 'car',
+  intent: WizardState['intent'] = 'trip',
+): number | null {
   if (!target) return null
+  if (intent === 'walk') {
+    return Math.max(1, Math.round((target.value / 60) * WALK_SPEED_KMH))
+  }
   return target.unit === 'km' ? target.value : hoursToKm(target.value / 60, transport)
 }
 
@@ -176,8 +191,9 @@ export function targetAnchorDistanceKm(
   target: RouteTarget | null,
   transport: WizardState['transport'] = 'car',
   count = 1,
+  intent: WizardState['intent'] = 'trip',
 ): number | null {
-  const distanceKm = targetDistanceKm(target, transport)
+  const distanceKm = targetDistanceKm(target, transport, intent)
   if (distanceKm === null) return null
   if (count <= 2) return distanceKm / 2
   if (count <= 4) return distanceKm / 3
@@ -210,7 +226,7 @@ export function desiredPoiCountsCircular(targetKm: number | null): number[] {
 }
 
 export function resolveCandidateCounts(state: WizardState, target: RouteTarget | null): number[] {
-  const targetKm = targetDistanceKm(target, state.transport)
+  const targetKm = targetDistanceKm(target, state.transport, state.intent)
   return isCircular(state) ? desiredPoiCountsCircular(targetKm) : desiredPoiCounts(targetKm)
 }
 
@@ -235,7 +251,7 @@ function scorePlaces(state: WizardState, target: RouteTarget | null = null, coun
 
   const origin = state.origin
   const destination = state.destination
-  const anchorDistanceKm = targetAnchorDistanceKm(target, state.transport, count)
+  const anchorDistanceKm = targetAnchorDistanceKm(target, state.transport, count, state.intent)
   const matching = ROUTE_PLACES.filter((place) =>
     place.interests.some((interestId) => state.interests.includes(interestId)),
   )
@@ -274,6 +290,7 @@ export function selectRoutePlaces(
   variantIndex: number,
   target: RouteTarget | null = null,
 ): RoutePlace[] {
+  if (state.intent === 'walk') return selectWalkPlaces(state, count, variantIndex)
   return isCircular(state)
     ? selectCircularRoutePlaces(state, count, variantIndex, target)
     : selectLinearRoutePlaces(state, count, variantIndex, target)
@@ -464,7 +481,7 @@ function selectLinearRoutePlaces(
   target: RouteTarget | null,
 ): RoutePlace[] {
   const scored = scorePlaces(state, target, count)
-  const targetKm = targetDistanceKm(target, state.transport)
+  const targetKm = targetDistanceKm(target, state.transport, state.intent)
   const corridorKm = resolveCorridorKm(state, target)
   const corridor = scored.filter(
     (entry) =>
@@ -485,6 +502,50 @@ function selectLinearRoutePlaces(
   return takeEvenlyAlongProjection(pool, state.interests, count, variantIndex, targetKm)
 }
 
+function nearestSelectedGapKm(place: RoutePlace, selected: RoutePlace[]): number {
+  const point = placeLatLng(place)
+  let gap = Number.POSITIVE_INFINITY
+  for (const selectedPlace of selected) {
+    gap = Math.min(gap, haversineKm(point, placeLatLng(selectedPlace)))
+  }
+  return gap
+}
+
+function selectWalkPlaces(state: WizardState, count: number, variantIndex: number): RoutePlace[] {
+  if (!hasValidEndpoint(state.origin) || count <= 0) return []
+
+  const scored = scorePlaces(state, null, count).sort(
+    (a, b) => a.distanceFromOriginKm - b.distanceFromOriginKm,
+  )
+  if (scored.length === 0) return []
+
+  const seeds = scored.filter((entry) => entry.distanceFromOriginKm <= WALK_SEED_RADIUS_KM)
+  const seed = seeds[variantIndex % seeds.length]
+  if (!seed) return []
+
+  const selected: RoutePlace[] = [seed.place]
+  const used = new Set<string>([seed.place.id])
+
+  while (selected.length < count) {
+    let best: ScoredPlace | null = null
+    let bestGap = Number.POSITIVE_INFINITY
+    for (const entry of scored) {
+      if (used.has(entry.place.id)) continue
+      const gap = nearestSelectedGapKm(entry.place, selected)
+      if (gap < bestGap) {
+        bestGap = gap
+        best = entry
+      }
+    }
+    if (!best || bestGap > WALK_LINK_KM) break
+    selected.push(best.place)
+    used.add(best.place.id)
+  }
+
+  if (selected.length < count) return []
+  return selected
+}
+
 function selectCircularRoutePlaces(
   state: WizardState,
   count: number,
@@ -499,7 +560,7 @@ function selectCircularRoutePlaces(
   })
 
   if (scored.length === 0) return []
-  const targetKm = targetDistanceKm(target, state.transport)
+  const targetKm = targetDistanceKm(target, state.transport, state.intent)
   const capped =
     targetKm === null
       ? scored
@@ -601,6 +662,17 @@ function uniqueCounts(...counts: number[]): number[] {
   return [...new Set(counts.map((count) => Math.max(0, count)))]
 }
 
+function buildWalkStops(state: WizardState, places: RoutePlace[]): RouteStop[] {
+  if (!hasValidEndpoint(state.origin)) {
+    throw new Error('Укажи город')
+  }
+
+  return [
+    buildEndpointStop(state.origin, 1, 'Старт'),
+    ...places.map((place, index) => buildPlaceStop(place, index + 2)),
+  ]
+}
+
 function buildInputStops(
   state: WizardState,
   places: RoutePlace[],
@@ -622,20 +694,26 @@ async function planStops(
   circular: boolean,
   optimize: boolean,
   transport: WizardState['transport'],
+  intent: WizardState['intent'] = 'trip',
 ) {
   const waypoints = stops.map((stop) => ({ lat: stop.lat, lng: stop.lng }))
   if (optimize) {
-    return planTrip(waypoints, { roundtrip: circular, transport })
+    return planTrip(waypoints, { roundtrip: circular, transport, intent })
   }
-  return planRoute(waypoints, { transport })
+  return planRoute(waypoints, { transport, intent })
 }
 
 function buildCandidateSpecs(state: WizardState, target: RouteTarget | null, transport: WizardState['transport']): CandidateSpec[] {
+  if (state.intent === 'walk') {
+    const count = walkStopCount(state.stopCount)
+    return WALK_CANDIDATE_SEEDS.map((seed, index) => ({ count, seed, scoreBias: index / 1000 }))
+  }
+
   if (!target) {
     return DEFAULT_CANDIDATE_SPECS.map((spec, index) => ({ ...spec, scoreBias: index }))
   }
 
-  const targetKm = targetDistanceKm(target, transport) ?? 0
+  const targetKm = targetDistanceKm(target, transport, state.intent) ?? 0
   const counts = resolveCandidateCounts(state, target).filter((count) => count > 0 && count <= MAX_POI_PER_ROUTE)
   const seeds = targetKm >= LONG_TARGET_KM ? LONG_TARGET_SEEDS : CANDIDATE_SEEDS
   const specs: CandidateSpec[] = []
@@ -651,6 +729,11 @@ function buildEmergencyDiversitySpecs(
   state: WizardState,
   target: RouteTarget | null,
 ): CandidateSpec[] {
+  if (state.intent === 'walk') {
+    const count = walkStopCount(state.stopCount)
+    return [6, 7, 8, 9].map((seed, index) => ({ count, seed, scoreBias: 200 + index / 1000 }))
+  }
+
   const counts = resolveCandidateCounts(state, target).filter((count) => count > 0 && count <= MAX_POI_PER_ROUTE)
   const specs: CandidateSpec[] = []
   for (const seed of EMERGENCY_DIVERSE_SEEDS) {
@@ -661,9 +744,13 @@ function buildEmergencyDiversitySpecs(
   return specs
 }
 
-function buildFallbackCandidateSpecs(target: RouteTarget | null, transport: WizardState['transport']): CandidateSpec[] {
+function buildFallbackCandidateSpecs(
+  target: RouteTarget | null,
+  transport: WizardState['transport'],
+  intent: WizardState['intent'] = 'trip',
+): CandidateSpec[] {
   if (!target) return []
-  const targetKm = targetDistanceKm(target, transport)
+  const targetKm = targetDistanceKm(target, transport, intent)
   const counts = fallbackPoiCountsForTarget(targetKm).filter((count) => count > 0 && count <= MAX_POI_PER_ROUTE)
   const seeds = targetKm !== null && targetKm >= LONG_TARGET_KM ? LONG_TARGET_SEEDS : CANDIDATE_SEEDS
   const specs: CandidateSpec[] = []
@@ -932,8 +1019,8 @@ async function buildCandidate(
     throw new Error('Укажи начальную и конечную точку')
   }
 
-  const circular = isCircular(state)
-  const targetKm = targetDistanceKm(target, state.transport)
+  const circular = state.intent === 'walk' ? false : isCircular(state)
+  const targetKm = targetDistanceKm(target, state.transport, state.intent)
   const longTarget = targetKm !== null && targetKm >= LONG_TARGET_KM
   const minPoiCount = target ? (spec.allowLowerCount ? spec.count : minDesiredPoiCountForState(state, target)) : 0
   const fallbackAttemptCounts = uniqueCounts(Math.min(minPoiCount - 1, spec.count), 1, 0).filter(
@@ -946,12 +1033,23 @@ async function buildCandidate(
   {
     const count = spec.count
     const places = count > 0 ? selectRoutePlaces(state, count, spec.seed, target) : []
-    const inputStops = buildInputStops(state, places, circular && places.length > 0)
-    try {
-      bestTrip = await planStops(inputStops, circular && places.length > 0, count > 0, state.transport)
-      bestInputStops = inputStops
-    } catch {
-      // Fall through to lower counts only when this call failed.
+    if (!(state.intent === 'walk' && places.length === 0)) {
+      const inputStops =
+        state.intent === 'walk'
+          ? buildWalkStops(state, places)
+          : buildInputStops(state, places, circular && places.length > 0)
+      try {
+        bestTrip = await planStops(
+          inputStops,
+          state.intent === 'walk' ? false : circular && places.length > 0,
+          count > 0,
+          state.transport,
+          state.intent,
+        )
+        bestInputStops = inputStops
+      } catch {
+        // Fall through to lower counts only when this call failed.
+      }
     }
   }
 
@@ -959,9 +1057,19 @@ async function buildCandidate(
     for (const count of fallbackAttemptCounts) {
       if (longTarget && spec.count > 0 && count === 0) continue
       const places = count > 0 ? selectRoutePlaces(state, count, spec.seed, target) : []
-      const inputStops = buildInputStops(state, places, circular && places.length > 0)
+      if (state.intent === 'walk' && places.length === 0) continue
+      const inputStops =
+        state.intent === 'walk'
+          ? buildWalkStops(state, places)
+          : buildInputStops(state, places, circular && places.length > 0)
       try {
-        bestTrip = await planStops(inputStops, circular && places.length > 0, count > 0, state.transport)
+        bestTrip = await planStops(
+          inputStops,
+          state.intent === 'walk' ? false : circular && places.length > 0,
+          count > 0,
+          state.transport,
+          state.intent,
+        )
         bestInputStops = inputStops
         break
       } catch {}
@@ -975,7 +1083,14 @@ async function buildCandidate(
   const orderedStops = reorderStops(bestInputStops, bestTrip.waypointOrder, bestTrip.legMinutes)
   const stops = circular ? appendCircularFinish(orderedStops, state.origin) : orderedStops
   const firstPoi = stops.find((stop) => stop.placeId !== 'origin' && stop.placeId !== 'destination')
-  const title = firstPoi ? `Через ${firstPoi.name}` : 'Прямой маршрут'
+  const title =
+    state.intent === 'walk'
+      ? firstPoi
+        ? `Прогулка через ${firstPoi.name}`
+        : 'Прогулка по городу'
+      : firstPoi
+        ? `Через ${firstPoi.name}`
+        : 'Прямой маршрут'
   const targetScore = target ? routeTargetDiff(bestTrip, target) : spec.scoreBias
   const penalty = routeTargetPenalty(bestTrip, target)
 
@@ -994,7 +1109,7 @@ async function buildCandidate(
 
 export async function generateRoutes(state: WizardState): Promise<GenerationResult> {
   if (!hasValidEndpoint(state.origin) || !hasValidEndpoint(state.destination) || state.interests.length === 0) {
-    throw new Error('Укажи откуда, куда и что посмотреть')
+    throw new Error(state.intent === 'walk' ? 'Укажи город и что посмотреть' : 'Укажи откуда, куда и что посмотреть')
   }
 
   const interestLabels = INTERESTS.filter((interest) => state.interests.includes(interest.id)).map(
@@ -1009,7 +1124,7 @@ export async function generateRoutes(state: WizardState): Promise<GenerationResu
   }
 
   if (shouldBuildFallbackCandidates(candidates, target)) {
-    for (const spec of buildFallbackCandidateSpecs(target, state.transport)) {
+    for (const spec of buildFallbackCandidateSpecs(target, state.transport, state.intent)) {
       const candidate = await buildCandidate(state, spec, target, interestLabels)
       if (candidate) candidates.push(candidate)
     }
@@ -1040,7 +1155,11 @@ export async function generateRoutes(state: WizardState): Promise<GenerationResu
   }
 
   if (selected.length === 0) {
-    throw new Error('Не удалось построить маршрут')
+    throw new Error(
+      state.intent === 'walk'
+        ? 'Рядом с городом мало мест для такой прогулки'
+        : 'Не удалось построить маршрут',
+    )
   }
 
   return {

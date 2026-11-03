@@ -20,8 +20,8 @@ function StopBadge({ stop }: { stop: RouteStop }) {
         flexShrink={0}
         align="center"
         justifyContent="center"
-        bg={isStart ? 'primary' : 'secondary'}
-        color={isStart ? 'primaryFg' : 'primary'}
+        bg="secondary"
+        color="primary"
         borderRadius="12px"
         minW="28px"
         aria-label={isStart ? 'Старт' : 'Финиш'}

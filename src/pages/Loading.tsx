@@ -45,9 +45,14 @@ export function Loading() {
         if (requestId !== requestIdRef.current) return
         saveGeneration(result)
         navigate('/plan/results', { replace: true })
-      } catch {
+      } catch (error) {
         if (requestId === requestIdRef.current) {
-          setError('Не удалось построить маршрут. Попробуй выбрать другие точки или повторить позже.')
+          const walkMessage = error instanceof Error ? error.message : ''
+          setError(
+            state.intent === 'walk' && walkMessage.startsWith('Рядом')
+              ? walkMessage
+              : 'Не удалось построить маршрут. Попробуй выбрать другие точки или повторить позже.',
+          )
         }
       }
     }

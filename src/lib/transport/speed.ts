@@ -1,9 +1,12 @@
-import type { Duration, Transport } from '@/types'
+import type { Duration, RouteIntent, Transport } from '@/types'
 
 export const TRANSPORT_SPEED_KMH: Record<Transport, number> = {
   car: 90,
   bike: 20,
 }
+
+/** Пешая прогулка. Не транспорт поездки. */
+export const WALK_SPEED_KMH = 4
 
 export function hoursToKm(hours: number, transport: Transport): number {
   return Math.max(1, Math.round(hours * TRANSPORT_SPEED_KMH[transport]))
@@ -13,8 +16,9 @@ export function kmToHours(km: number, transport: Transport): number {
   return Math.max(1, Math.round(km / TRANSPORT_SPEED_KMH[transport]))
 }
 
-export function minutesForDistanceKm(km: number, transport: Transport): number {
-  return Math.max(1, Math.round((km / TRANSPORT_SPEED_KMH[transport]) * 60))
+export function minutesForDistanceKm(km: number, transport: Transport, intent: RouteIntent = 'trip'): number {
+  const speed = intent === 'walk' ? WALK_SPEED_KMH : TRANSPORT_SPEED_KMH[transport]
+  return Math.max(1, Math.round((km / speed) * 60))
 }
 
 export function completeDurationForTransport(duration: Duration, transport: Transport): Duration {

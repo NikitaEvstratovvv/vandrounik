@@ -1,7 +1,7 @@
-import type { LatLng, Transport } from '@/types'
+import type { LatLng, RouteIntent, Transport } from '@/types'
 import { minutesForDistanceKm } from '@/lib/transport/speed'
 
-export type OsrmProfile = 'driving' | 'cycling'
+export type OsrmProfile = 'driving' | 'cycling' | 'foot'
 
 const OSRM_TRIP_BASE = '/api/osrm/trip/v1'
 const OSRM_ROUTE_BASE = '/api/osrm/route/v1'
@@ -55,10 +55,12 @@ export type PlannedTrip = {
 export type PlanTripOptions = {
   roundtrip?: boolean
   transport?: Transport
+  intent?: RouteIntent
 }
 
 export type PlanRouteOptions = {
   transport?: Transport
+  intent?: RouteIntent
 }
 
 const plannedTripCache = new Map<string, PlannedTrip>()
@@ -114,16 +116,17 @@ async function getOrFetchTableDistances(
   return promise
 }
 
-export function osrmProfile(transport: Transport = 'car'): OsrmProfile {
+export function osrmProfile(transport: Transport = 'car', intent: RouteIntent = 'trip'): OsrmProfile {
+  if (intent === 'walk') return 'foot'
   return transport === 'bike' ? 'cycling' : 'driving'
 }
 
-function tripEndpoint(transport: Transport = 'car'): string {
-  return `${OSRM_TRIP_BASE}/${osrmProfile(transport)}`
+function tripEndpoint(transport: Transport = 'car', intent: RouteIntent = 'trip'): string {
+  return `${OSRM_TRIP_BASE}/${osrmProfile(transport, intent)}`
 }
 
-function routeEndpoint(transport: Transport = 'car'): string {
-  return `${OSRM_ROUTE_BASE}/${osrmProfile(transport)}`
+function routeEndpoint(transport: Transport = 'car', intent: RouteIntent = 'trip'): string {
+  return `${OSRM_ROUTE_BASE}/${osrmProfile(transport, intent)}`
 }
 
 function tableEndpoint(transport: Transport = 'car'): string {
@@ -182,9 +185,9 @@ async function fetchWithTimeout(url: string, timeoutMs = OSRM_TIMEOUT_MS): Promi
   }
 }
 
-function legMinutesFromOsrm(leg: OsrmLeg, transport: Transport): number {
-  if (transport === 'bike') {
-    return minutesForDistanceKm(leg.distance / 1000, transport)
+function legMinutesFromOsrm(leg: OsrmLeg, transport: Transport, intent: RouteIntent): number {
+  if (intent === 'walk' || transport === 'bike') {
+    return minutesForDistanceKm(leg.distance / 1000, transport, intent)
   }
   return Math.max(1, Math.round(leg.duration / 60))
 }
@@ -193,10 +196,11 @@ export function plannedTripFromOsrmRoute(
   route: OsrmTrip,
   waypointOrder: number[],
   transport: Transport = 'car',
+  intent: RouteIntent = 'trip',
 ): PlannedTrip {
-  const legMinutes = route.legs.map((leg) => legMinutesFromOsrm(leg, transport))
+  const legMinutes = route.legs.map((leg) => legMinutesFromOsrm(leg, transport, intent))
   const durationMinutes =
-    transport === 'bike'
+    intent === 'walk' || transport === 'bike'
       ? Math.max(1, legMinutes.reduce((sum, minutes) => sum + minutes, 0))
       : Math.max(1, Math.round(route.duration / 60))
 
@@ -215,8 +219,9 @@ export async function planTrip(waypoints: LatLng[], options: PlanTripOptions = {
   }
 
   const transport = options.transport ?? 'car'
+  const intent = options.intent ?? 'trip'
   const roundtrip = Boolean(options.roundtrip)
-  const cacheKey = `trip|${osrmProfile(transport)}|${roundtrip ? 'rt' : 'oneway'}|${waypointsKey(waypoints)}`
+  const cacheKey = `trip|${osrmProfile(transport, intent)}|${roundtrip ? 'rt' : 'oneway'}|${waypointsKey(waypoints)}`
 
   return getOrFetchPlannedTrip(cacheKey, async () => {
     const coordinates = waypointsKey(waypoints)
@@ -234,7 +239,10 @@ export async function planTrip(waypoints: LatLng[], options: PlanTripOptions = {
       params.set('destination', 'last')
     }
 
-    const response = await fetchWithTimeout(`${tripEndpoint(transport)}/${coordinates}?${params.toString()}`)
+    const response = await fetchOsrm(
+      `${tripEndpoint(transport, intent)}/${coordinates}?${params.toString()}`,
+      intent === 'walk' ? `${tripEndpoint(transport)}/${coordinates}?${params.toString()}` : null,
+    )
     if (!response.ok) {
       throw new Error('OSRM недоступен')
     }
@@ -253,7 +261,7 @@ export async function planTrip(waypoints: LatLng[], options: PlanTripOptions = {
       .sort((a, b) => a.order - b.order)
       .map((waypoint) => waypoint.inputIndex)
 
-    return plannedTripFromOsrmRoute(trip, waypointOrder, transport)
+    return plannedTripFromOsrmRoute(trip, waypointOrder, transport, intent)
   })
 }
 
@@ -296,7 +304,8 @@ export async function planRoute(waypoints: LatLng[], options: PlanRouteOptions =
   }
 
   const transport = options.transport ?? 'car'
-  const cacheKey = `route|${osrmProfile(transport)}|${waypointsKey(waypoints)}`
+  const intent = options.intent ?? 'trip'
+  const cacheKey = `route|${osrmProfile(transport, intent)}|${waypointsKey(waypoints)}`
 
   return getOrFetchPlannedTrip(cacheKey, async () => {
     const coordinates = waypointsKey(waypoints)
@@ -306,7 +315,10 @@ export async function planRoute(waypoints: LatLng[], options: PlanRouteOptions =
       steps: 'false',
     })
 
-    const response = await fetchWithTimeout(`${routeEndpoint(transport)}/${coordinates}?${params.toString()}`)
+    const response = await fetchOsrm(
+      `${routeEndpoint(transport, intent)}/${coordinates}?${params.toString()}`,
+      intent === 'walk' ? `${routeEndpoint(transport)}/${coordinates}?${params.toString()}` : null,
+    )
     if (!response.ok) {
       throw new Error('OSRM недоступен')
     }
@@ -317,8 +329,15 @@ export async function planRoute(waypoints: LatLng[], options: PlanRouteOptions =
       throw new Error(data.message || 'Не удалось построить маршрут')
     }
 
-    return plannedTripFromOsrmRoute(route, waypoints.map((_, index) => index), transport)
+    return plannedTripFromOsrmRoute(route, waypoints.map((_, index) => index), transport, intent)
   })
+}
+
+/** Пеший профиль на публичном OSRM может отсутствовать — тогда линия строится как для авто, время всё равно пешее. */
+async function fetchOsrm(url: string, drivingFallback: string | null): Promise<Response> {
+  const response = await fetchWithTimeout(url)
+  if (response.ok || !drivingFallback) return response
+  return fetchWithTimeout(drivingFallback)
 }
 
 export function clearOsrmCache(): void {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Box, Flex, Image, Text, VStack, chakra } from '@chakra-ui/react'
 import { CloseIcon } from '@/components/icons'
+import { PlacePhoto } from '@/components/PlacePhoto'
 import { PrimaryButton } from '@/components/PrimaryButton'
 import { SquareButton } from '@/components/SquareButton'
 import { formatPlaceDescription, formatPlaceTypeLabel } from '@/data/placeTaxonomy'
@@ -84,14 +85,6 @@ function OutlinePillButton({ children, onClick }: { children: string; onClick: (
     >
       {children}
     </chakra.button>
-  )
-}
-
-function PlacePhoto({ src }: { src: string }) {
-  return (
-    <Box h="160px" w="full" borderRadius="sm" overflow="hidden" bg="secondary" flexShrink={0}>
-      <Image src={src} alt="" w="full" h="full" objectFit="cover" display="block" />
-    </Box>
   )
 }
 
